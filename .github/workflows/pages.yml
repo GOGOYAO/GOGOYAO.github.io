@@ -4,7 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 concurrency:
@@ -32,10 +32,3 @@ jobs:
           path: public
       - uses: actions/deploy-pages@v4
         id: deployment
-      - name: Remove retired source branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          old=$(gh api repos/${{ github.repository }}/git/ref/heads/source --jq .object.sha)
-          test "$old" = "f6887abc538ecaa833ea16af4a045e63af5db34c"
-          gh api --method DELETE repos/${{ github.repository }}/git/refs/heads/source
