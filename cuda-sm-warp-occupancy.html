@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CUDA：SM 资源限制、Warp 调度与 Occupancy</title>
+  <style>
+    :root{
+      --bg:#f7f8fa;
+      --card:#ffffff;
+      --panel:#f1f3f5;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --border:#d1d5db;
+      --accent:#2563eb;
+      --series2:#60a5fa;
+      --series3:#34d399;
+      --series4:#a78bfa;
+      --series5:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:1320px;margin:0 auto;padding:24px}
+    h1{font-size:28px;margin:0 0 8px}
+    .sub{color:var(--muted);margin-bottom:20px}
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:18px;
+      margin-bottom:18px;
+    }
+    .card h2{font-size:18px;margin:0 0 14px}
+    .controls{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:14px;
+    }
+    label span{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    select{
+      width:100%;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:white;
+      color:var(--text);
+      font-size:15px;
+    }
+    .summary{
+      margin-top:14px;
+      background:var(--panel);
+      border-radius:10px;
+      padding:14px;
+      line-height:1.8;
+      font-size:14px;
+    }
+    .occbar{
+      margin-top:12px;
+      height:12px;
+      background:#e5e7eb;
+      border-radius:999px;
+      overflow:hidden;
+    }
+    .occfill{height:100%;background:var(--series3);width:0;transition:width .2s}
+    .svgbox{
+      overflow-x:auto;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:12px;
+    }
+    svg{min-width:1040px;width:100%;height:auto}
+    .note{
+      line-height:1.8;
+      color:var(--muted);
+      font-size:14px;
+    }
+    @media (max-width:760px){
+      .wrap{padding:14px}
+      .controls{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CUDA：SM 资源限制、Warp 调度与 Occupancy</h1>
+  <div class="sub">从 Kernel 资源需求出发，观察它如何限制 resident blocks / warps，并进一步影响 occupancy 与 SM 内部调度。</div>
+
+  <div class="card">
+    <h2>① Kernel 资源需求</h2>
+    <div class="controls">
+      <label>
+        <span>Threads / Block</span>
+        <select id="tpb">
+          <option value="128">128</option>
+          <option value="256" selected>256</option>
+          <option value="512">512</option>
+        </select>
+      </label>
+      <label>
+        <span>Registers / Thread</span>
+        <select id="rpt">
+          <option value="32">32</option>
+          <option value="64" selected>64</option>
+          <option value="96">96</option>
+          <option value="128">128</option>
+        </select>
+      </label>
+      <label>
+        <span>Shared Memory / Block</span>
+        <select id="smem">
+          <option value="0">0 KB</option>
+          <option value="8192">8 KB</option>
+          <option value="16384" selected>16 KB</option>
+          <option value="32768">32 KB</option>
+        </select>
+      </label>
+    </div>
+    <div id="summary" class="summary"></div>
+    <div class="occbar"><div id="occFill" class="occfill"></div></div>
+  </div>
+
+  <div class="svgbox">
+    <svg viewBox="0 0 1240 690" role="img" aria-label="CUDA Grid Block SM 资源限制 Warp Scheduler Occupancy 全流程">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="currentColor"></path>
+        </marker>
+      </defs>
+
+      <text x="25" y="28" font-size="16" font-weight="700">② Grid / Block</text>
+      <rect x="20" y="42" width="270" height="610" rx="14" fill="var(--card)" stroke="var(--border)"/>
+      <text x="40" y="72" font-size="14" font-weight="700">Grid</text>
+      <text x="40" y="92" font-size="11" fill="var(--muted)">一次 kernel launch 的全部 blocks</text>
+      <g id="grid"></g>
+      <text x="40" y="605" font-size="12" fill="var(--muted)">Block 是被分配到 SM 的单位</text>
+      <text x="40" y="625" font-size="12" fill="var(--muted)">一个 Block 不跨 SM</text>
+
+      <line x1="295" y1="335" x2="345" y2="335" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="298" y="318" font-size="11" fill="var(--muted)">调度 block</text>
+
+      <text x="355" y="28" font-size="16" font-weight="700">③ 一个 SM：资源容量决定能放多少 Block</text>
+      <rect x="345" y="42" width="510" height="610" rx="14" fill="var(--card)" stroke="var(--border)"/>
+
+      <text x="365" y="72" font-size="14" font-weight="700">示例 SM 的硬件上限</text>
+      <g id="limits"></g>
+
+      <text x="365" y="258" font-size="14" font-weight="700">当前 Kernel 每个 Block 的资源需求</text>
+      <g id="perBlock"></g>
+
+      <text x="365" y="372" font-size="14" font-weight="700">每项资源分别最多支持多少 Blocks</text>
+      <g id="constraints"></g>
+
+      <rect x="365" y="520" width="470" height="105" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="385" y="545" font-size="13" font-weight="700">最终 Resident Blocks</text>
+      <text id="residentFormula" x="385" y="570" font-size="12"></text>
+      <text id="residentWarpsFormula" x="385" y="594" font-size="12"></text>
+      <text id="bottleneck" x="385" y="615" font-size="12" font-weight="700"></text>
+
+      <line x1="860" y1="335" x2="910" y2="335" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="865" y="318" font-size="11" fill="var(--muted)">形成 resident warps</text>
+
+      <text x="920" y="28" font-size="16" font-weight="700">④ Warp Scheduler</text>
+      <rect x="910" y="42" width="310" height="610" rx="14" fill="var(--card)" stroke="var(--border)"/>
+
+      <rect x="930" y="85" width="270" height="105" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="945" y="110" font-size="13" font-weight="700">Resident Warps</text>
+      <text id="residentWarpText" x="945" y="133" font-size="12"></text>
+      <text x="945" y="155" font-size="11" fill="var(--muted)">都已占用寄存器 / 所属 block 的 shared memory / warp slot</text>
+      <text x="945" y="174" font-size="11" fill="var(--muted)">但不代表此刻都在执行</text>
+
+      <line x1="1065" y1="195" x2="1065" y2="230" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+
+      <rect x="930" y="240" width="270" height="100" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="945" y="265" font-size="13" font-weight="700">运行时状态</text>
+      <rect x="950" y="285" width="95" height="32" rx="6" fill="var(--series3)" opacity="0.75"/>
+      <text x="997" y="305" text-anchor="middle" font-size="11">Ready</text>
+      <rect x="1070" y="285" width="95" height="32" rx="6" fill="var(--series5)" opacity="0.75"/>
+      <text x="1117" y="305" text-anchor="middle" font-size="11">Stalled</text>
+
+      <line x1="1065" y1="345" x2="1065" y2="380" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+
+      <rect x="950" y="390" width="230" height="75" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="1065" y="417" text-anchor="middle" font-size="13" font-weight="700">Warp Scheduler</text>
+      <text x="1065" y="440" text-anchor="middle" font-size="11" fill="var(--muted)">从 ready warps 中挑选并 issue</text>
+
+      <line x1="1065" y1="470" x2="1065" y2="505" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+
+      <rect x="940" y="515" width="250" height="85" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="1065" y="542" text-anchor="middle" font-size="13" font-weight="700">执行单元</text>
+      <text x="1065" y="565" text-anchor="middle" font-size="11" fill="var(--muted)">CUDA Core / Tensor Core</text>
+      <text x="1065" y="584" text-anchor="middle" font-size="11" fill="var(--muted)">Load/Store Unit / SFU</text>
+
+      <text x="945" y="625" font-size="12" font-weight="700">Occupancy</text>
+      <text id="occSvg" x="945" y="645" font-size="12"></text>
+    </svg>
+  </div>
+
+  <div class="card">
+    <h2>⑤ 核心逻辑</h2>
+    <div class="note">
+      一个 SM 不是先决定“我要 64 个 warp”，而是不断装入 Block。每装入一个 Block，就同时消耗 threads、registers、shared memory、block slot 和 warp slot。
+      任意一种资源先达到上限，就不能继续装新的 Block。最终：
+      <b>resident blocks × warps/block = resident warps</b>，而 occupancy = resident warps / SM 最大 warps。
+      Resident warp 只是“已经驻留并占资源”，真正每周期执行哪些 warp，还要由 Warp Scheduler 从 ready warps 中选择并 issue。
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const HW = {
+    maxWarps: 64,
+    maxThreads: 2048,
+    maxBlocks: 32,
+    registers: 65536,
+    smem: 65536
+  };
+
+  const tpb = document.getElementById('tpb');
+  const rpt = document.getElementById('rpt');
+  const smem = document.getElementById('smem');
+
+  const grid = document.getElementById('grid');
+  const limits = document.getElementById('limits');
+  const perBlock = document.getElementById('perBlock');
+  const constraints = document.getElementById('constraints');
+  const residentFormula = document.getElementById('residentFormula');
+  const residentWarpsFormula = document.getElementById('residentWarpsFormula');
+  const bottleneck = document.getElementById('bottleneck');
+  const residentWarpText = document.getElementById('residentWarpText');
+  const occSvg = document.getElementById('occSvg');
+  const summary = document.getElementById('summary');
+  const occFill = document.getElementById('occFill');
+
+  function renderGrid(threads){
+    const warps = threads / 32;
+    let s = '';
+    for(let i=0;i<8;i++){
+      const x = 45 + (i%2)*115;
+      const y = 125 + Math.floor(i/2)*95;
+      s += `<rect x="${x}" y="${y}" width="100" height="72" rx="8" fill="var(--panel)" stroke="var(--border)"/>`;
+      s += `<text x="${x+10}" y="${y+21}" font-size="11" font-weight="700">Block ${i}</text>`;
+      s += `<text x="${x+10}" y="${y+41}" font-size="10" fill="var(--muted)">${threads} threads</text>`;
+      s += `<text x="${x+10}" y="${y+58}" font-size="10" fill="var(--muted)">${warps} warps</text>`;
+    }
+    grid.innerHTML = s;
+  }
+
+  function limitRow(y,label,value,unit){
+    return `<rect x="365" y="${y}" width="220" height="26" rx="6" fill="var(--panel)"/>
+            <text x="375" y="${y+18}" font-size="11">${label}</text>
+            <text x="575" y="${y+18}" text-anchor="end" font-size="11" font-weight="700">${value} ${unit}</text>`;
+  }
+
+  function constraintRow(y,label,maxBlocks,isBottle){
+    const fill = isBottle ? 'var(--series5)' : 'var(--panel)';
+    const opacity = isBottle ? '0.72' : '1';
+    return `<rect x="365" y="${y}" width="450" height="25" rx="6" fill="${fill}" opacity="${opacity}" stroke="var(--border)"/>
+            <text x="377" y="${y+17}" font-size="11">${label}</text>
+            <text x="800" y="${y+17}" text-anchor="end" font-size="11" font-weight="700">
+              最多 ${maxBlocks} blocks / SM${isBottle ? '  ← 瓶颈' : ''}
+            </text>`;
+  }
+
+  function update(){
+    const threads = Number(tpb.value);
+    const regs = Number(rpt.value);
+    const smemBlock = Number(smem.value);
+
+    const warpsPerBlock = threads / 32;
+    const regsPerBlock = threads * regs;
+
+    const byThreads = Math.floor(HW.maxThreads / threads);
+    const byRegs = Math.floor(HW.registers / regsPerBlock);
+    const bySmem = smemBlock === 0 ? HW.maxBlocks : Math.floor(HW.smem / smemBlock);
+    const byBlocks = HW.maxBlocks;
+    const byWarps = Math.floor(HW.maxWarps / warpsPerBlock);
+
+    const vals = [byThreads, byRegs, bySmem, byBlocks, byWarps];
+    const residentBlocks = Math.min(...vals);
+    const residentWarps = residentBlocks * warpsPerBlock;
+    const occ = residentWarps / HW.maxWarps;
+
+    const labels = ['Thread 数量','Register 数量','Shared Memory','Block slot','Warp slot'];
+    const bottlenecks = labels.filter((_,i)=>vals[i]===residentBlocks);
+
+    renderGrid(threads);
+
+    limits.innerHTML =
+      limitRow(92,'最大 Threads / SM',HW.maxThreads,'threads') +
+      limitRow(124,'最大 Warps / SM',HW.maxWarps,'warps') +
+      limitRow(156,'最大 Blocks / SM',HW.maxBlocks,'blocks') +
+      limitRow(188,'Register File / SM',HW.registers,'registers') +
+      limitRow(220,'Shared Memory / SM',HW.smem/1024,'KB');
+
+    perBlock.innerHTML =
+      `<rect x="365" y="275" width="450" height="72" rx="8" fill="var(--panel)" stroke="var(--border)"/>
+       <text x="380" y="297" font-size="11">${threads} threads / block</text>
+       <text x="380" y="318" font-size="11">${warpsPerBlock} warps / block</text>
+       <text x="565" y="297" font-size="11">${regs} registers / thread</text>
+       <text x="565" y="318" font-size="11">${regsPerBlock} registers / block</text>
+       <text x="380" y="338" font-size="11">${smemBlock/1024} KB shared memory / block</text>`;
+
+    constraints.innerHTML =
+      constraintRow(390,'Thread 限制',byThreads,byThreads===residentBlocks) +
+      constraintRow(420,'Register 限制',byRegs,byRegs===residentBlocks) +
+      constraintRow(450,'Shared Memory 限制',bySmem,bySmem===residentBlocks) +
+      constraintRow(480,'Block slot 限制',byBlocks,byBlocks===residentBlocks) +
+      constraintRow(510,'Warp slot 限制',byWarps,byWarps===residentBlocks);
+
+    residentFormula.textContent =
+      `resident blocks = min(${byThreads}, ${byRegs}, ${bySmem}, ${byBlocks}, ${byWarps}) = ${residentBlocks}`;
+
+    residentWarpsFormula.textContent =
+      `resident warps = ${residentBlocks} blocks × ${warpsPerBlock} warps/block = ${residentWarps}`;
+
+    bottleneck.textContent = `当前瓶颈：${bottlenecks.join(' + ')}`;
+    residentWarpText.textContent = `${residentWarps} resident warps / 最大 ${HW.maxWarps}`;
+    occSvg.textContent = `${residentWarps} / ${HW.maxWarps} = ${Math.round(occ*100)}%`;
+
+    summary.innerHTML = `
+      <div><b>${threads}</b> threads/block → <b>${warpsPerBlock}</b> warps/block</div>
+      <div>Thread 限制：最多 <b>${byThreads}</b> blocks / SM</div>
+      <div>Register 限制：最多 <b>${byRegs}</b> blocks / SM</div>
+      <div>Shared Memory 限制：最多 <b>${bySmem}</b> blocks / SM</div>
+      <div>Block slot 限制：最多 <b>${byBlocks}</b> blocks / SM</div>
+      <div>Warp slot 限制：最多 <b>${byWarps}</b> blocks / SM</div>
+      <div style="margin-top:6px">最终：<b>${residentBlocks} resident blocks / ${residentWarps} resident warps</b></div>
+      <div>当前瓶颈：<b>${bottlenecks.join(' + ')}</b></div>
+      <div>Occupancy：<b>${Math.round(occ*100)}%</b></div>
+    `;
+
+    occFill.style.width = `${Math.round(occ*100)}%`;
+  }
+
+  tpb.addEventListener('change', update);
+  rpt.addEventListener('change', update);
+  smem.addEventListener('change', update);
+
+  update();
+})();
+</script>
+</body>
+</html>
