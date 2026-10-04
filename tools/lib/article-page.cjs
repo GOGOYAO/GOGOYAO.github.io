@@ -6,9 +6,9 @@ function articlePage(document, title, summary, navigation = {}) {
   const heading = result.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
   if (heading && heading[1].replace(/<[^>]*>/g, '').trim() === title) result = result.replace(heading[0], header);
   else result = result.replace(/<body\b[^>]*>/i, match => match + header);
-  const link = (post, label) => post ? `<a href="/${xml(post.path.replace(/^\\/+/, ''))}" style="flex:1;min-width:0;padding:16px;border:1px solid var(--border,#d1d5db);border-radius:10px;text-decoration:none;color:inherit;background:var(--card,#fff)"><small style="display:block;color:var(--muted,#64748b);margin-bottom:6px">${label}</small><span style="font-weight:600;overflow-wrap:anywhere">${xml(post.title)}</span></a>` : '';
+  const link = (post, label) => post ? `<a href="/${xml(post.path.split('/').filter(Boolean).join('/'))}" style="flex:1;min-width:0;padding:16px;border:1px solid var(--border,#d1d5db);border-radius:10px;text-decoration:none;color:inherit;background:var(--card,#fff)"><small style="display:block;color:var(--muted,#64748b);margin-bottom:6px">${label}</small><span style="font-weight:600;overflow-wrap:anywhere">${xml(post.title)}</span></a>` : '';
   const nav = `<nav data-blog-navigation aria-label="文章导航" style="display:flex;flex-wrap:wrap;gap:16px;max-width:1472px;margin:32px auto;padding:0 24px;font-family:inherit;color:inherit">${link(navigation.prev, '← 上一篇')}${link(navigation.next, '下一篇 →')}<a href="/" style="align-self:center;color:var(--accent,#2563eb);white-space:nowrap">返回首页</a></nav>`;
-  result = result.replace(/<\\/body>/i, nav + '</body>');
+  result = result.replace('</body>', nav + '</body>');
   return result.replace(/<\/head>/i, styles + '</head>');
 }
 module.exports = { articlePage };
