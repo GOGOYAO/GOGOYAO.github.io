@@ -93,11 +93,21 @@
     }
     .summary-limit.is-bottleneck{background:#fffbeb;border-color:#f5c56b}
     .summary-limit > span{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
-    .summary-limit > div{font-size:12px;white-space:nowrap}
+    .summary-limit > div{font-size:12px}
+    .summary-limit > div:last-child{white-space:nowrap}
     .summary-limit .limit-hardware{display:block;font-size:11px;line-height:1.4;margin:3px 0 4px;overflow-wrap:anywhere}
     .summary-limits-caption{font-size:11px;color:var(--muted);margin-bottom:6px}
     .summary-limit b{font-size:18px;margin:0 2px;color:var(--text)}
     .summary-limit.is-bottleneck b{color:#92400e}
+    .resource-rows{margin:5px 0 7px;display:grid;gap:3px}
+    .resource-row{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:11px;line-height:1.4;flex-wrap:wrap}
+    .resource-row > span:first-child{color:var(--muted)}
+    .resource-row > span:last-child{font-variant-numeric:tabular-nums;font-weight:600}
+    .resource-row.is-over > span{color:#b91c1c}
+    .resource-row.is-over{background:#fee2e2;border-radius:4px;padding:3px 5px;margin:0 -5px}
+    .resource-excess{font-size:10px;font-weight:600;color:#b91c1c;line-height:1.3}
+    .resource-target-note{font-size:12px;margin:0 0 8px;color:var(--muted);overflow-wrap:anywhere}
+    .resource-target-note b{color:var(--text)}
     .occbar{
       margin-top:6px;
       height:6px;
@@ -118,7 +128,11 @@
       .summary-occupancy b{font-size:24px}
       .summary-info{gap:5px;margin:10px 0}
       .summary-limits{grid-template-columns:1fr;gap:4px}
-      .summary-limit{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 8px}
+      .summary-limit{display:block;padding:8px 10px}
+      .resource-rows{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px}
+      .resource-row{display:block}
+      .resource-row > span{display:block}
+      .resource-excess{grid-column:1 / -1}
       .summary-limit > span{font-size:11px;margin-bottom:0;line-height:1.3}
       .summary-limit > div{font-size:11px;line-height:1.3}
       .summary-limit b{font-size:16px}
@@ -393,12 +407,32 @@
         <div class="summary-kernel"><b>${threads}</b> threads/block → <b>${warpsPerBlock}</b> warps/block</div>
         <div class="summary-bottleneck">当前瓶颈：<b>${bottlenecks.join(' + ')}</b></div>
       </div>
-      <div class="summary-limits-caption">示例 SM 的硬件上限 → 当前 Kernel 的 Block 限制</div>
+      <div class="resource-target-note">满 Warp 槽位目标：<b>${byWarps} blocks × ${warpsPerBlock} warps = ${byWarps*warpsPerBlock} warps</b>；实际驻留：<b>${residentBlocks} blocks</b>。红色表示目标需求超过 SM 上限。</div>
       <div class="summary-limits">
-        ${[['Thread',byThreads,`${HW.maxThreads} threads`],['Register',byRegs,`${HW.registers.toLocaleString('en-US')} registers`],['Shared Memory',bySmem,`${HW.smem/1024} KB`],['Block slot',byBlocks,`${HW.maxBlocks} blocks`],['Warp slot',byWarps,`${HW.maxWarps} warps`]].map(([label,value,capacity]) => `
+        ${[
+          ['Thread',byThreads,HW.maxThreads,threads,'threads'],
+          ['Register',byRegs,HW.registers,regsPerBlock,'registers'],
+          ['Shared Memory',bySmem,HW.smem/1024,smemBlock/1024,'KB'],
+          ['Block slot',byBlocks,HW.maxBlocks,1,'blocks'],
+          ['Warp slot',byWarps,HW.maxWarps,warpsPerBlock,'warps']
+        ].map(([label,value,capacity,perBlock,unit]) => {
+          const target = perBlock * byWarps;
+          const used = perBlock * residentBlocks;
+          const exceeded = target > capacity;
+          const fmt = n => n.toLocaleString('en-US');
+          return `
           <div class="summary-limit${value===residentBlocks ? ' is-bottleneck' : ''}">
-            <span>${label} 限制：<small class="limit-hardware">SM 上限：${capacity}</small></span><div>最多 <b>${value}</b> blocks / SM</div>
-          </div>`).join('')}
+            <span>${label} 限制：</span>
+            <div class="resource-rows">
+              <div class="resource-row"><span>SM 上限</span><span>${fmt(capacity)} ${unit}</span></div>
+              <div class="resource-row"><span>每 Block 需求</span><span>${fmt(perBlock)} ${unit}</span></div>
+              <div class="resource-row${exceeded ? ' is-over' : ''}"><span>目标 ${byWarps} Blocks</span><span>${fmt(target)} ${unit}</span></div>
+              ${exceeded ? `<div class="resource-excess">超出 ${fmt(target-capacity)} ${unit}（${fmt(target/capacity)} 倍上限）</div>` : ''}
+              <div class="resource-row"><span>驻留 ${residentBlocks} Blocks</span><span>${fmt(used)} ${unit}</span></div>
+            </div>
+            <div>最多 <b>${value}</b> blocks / SM</div>
+          </div>`;
+        }).join('')}
       </div>
     `;
 
