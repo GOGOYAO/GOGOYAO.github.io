@@ -1,0 +1,6 @@
+_blog/node_modules/
+_blog/public/
+_blog/db.json
+_blog/debug.log
+_blog/build-routes.json
+.DS_Store

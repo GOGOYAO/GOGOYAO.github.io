@@ -1,0 +1,81 @@
+[
+  {
+    "title": "CUDA：SM 资源限制、Warp 调度与 Occupancy",
+    "path": "posts/cuda-sm-warp-occupancy/",
+    "published": true,
+    "date": "2026-10-04",
+    "source": "_posts/cuda-sm-warp-occupancy.md",
+    "categories": [
+      {
+        "name": "GPU 编程",
+        "path": "categories/GPU-编程/"
+      }
+    ],
+    "tags": [
+      {
+        "name": "CUDA",
+        "path": "tags/CUDA/"
+      },
+      {
+        "name": "GPU",
+        "path": "tags/GPU/"
+      },
+      {
+        "name": "LLM 推理",
+        "path": "tags/LLM-推理/"
+      }
+    ]
+  },
+  {
+    "title": "About Me",
+    "path": "2021/08/01/about/",
+    "published": true,
+    "date": "2021-08-01",
+    "source": "_posts/about.html",
+    "categories": [],
+    "tags": [
+      {
+        "name": "随笔",
+        "path": "tags/随笔/"
+      }
+    ]
+  },
+  {
+    "title": "博客搭建方法",
+    "path": "2021/07/31/博客搭建方法/",
+    "published": true,
+    "date": "2021-07-31",
+    "source": "_posts/博客搭建方法.html",
+    "categories": [
+      {
+        "name": "博客搭建",
+        "path": "categories/博客搭建/"
+      }
+    ],
+    "tags": [
+      {
+        "name": "博客搭建",
+        "path": "tags/博客搭建/"
+      }
+    ]
+  },
+  {
+    "title": "Hello World",
+    "path": "2021/07/31/hello-world/",
+    "published": true,
+    "date": "2021-07-31",
+    "source": "_posts/hello-world.html",
+    "categories": [
+      {
+        "name": "测试",
+        "path": "categories/测试/"
+      }
+    ],
+    "tags": [
+      {
+        "name": "博客搭建",
+        "path": "tags/博客搭建/"
+      }
+    ]
+  }
+]
