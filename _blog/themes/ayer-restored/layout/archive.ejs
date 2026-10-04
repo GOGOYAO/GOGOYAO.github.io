@@ -1,7 +1,0 @@
-<section class="outer"><article class="articles">
-<h1 class="page-type-title"><%= page.category ? '分类：' + page.category : page.tag ? '标签：' + page.tag : '归档' %></h1>
-<% let year = null; page.posts.each(function(post) { const current = date(post.date, 'YYYY'); if(year !== current) { if(year !== null) { %></div></div><% } year = current; %>
-<div class="archives-wrap"><div class="archive-year-wrap"><a class="archive-year" href="<%= url_for('archives/' + year + '/') %>"><%= year %></a></div><div class="archives">
-<% } %><article class="archive-article archive-type-post"><div class="archive-article-inner"><header class="archive-article-header"><a class="archive-article-date" href="<%= url_for(post.path) %>"><time datetime="<%= date_xml(post.date) %>"><%= date(post.date,'MM/DD') %></time></a><h2><a class="archive-article-title" href="<%= url_for(post.path) %>"><%= post.title %></a></h2></header></div></article><% }); if(year !== null) { %></div></div><% } %>
-<% if(page.total > 1) { %><nav id="page-nav"><%- paginator({prev_text:'上一页',next_text:'下一页'}) %></nav><% } %>
-</article></section>

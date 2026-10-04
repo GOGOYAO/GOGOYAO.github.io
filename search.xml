@@ -49,16 +49,16 @@
  每个 Block 有 8 个 Warps，因此驻留 Warps &amp;#x3D; 4 × 8 &amp;#x3D;  32 ，Occupancy &amp;#x3D; 32 &amp;#x2F; 64 &amp;#x3D;  50% 。 
  瓶颈不一定表示资源完全用尽；剩余资源也可能不足以容纳一个完整 Block。 
    驻留与调度  Block 被分配到 SM 后，它包含的 Warps 成为 resident warps，并占用相应资源。Resident 不表示此刻都在执行：Warp Scheduler 从 ready warps 中选择并 issue 指令，交由相应执行单元处理。 
-</content><url>//posts/cuda-sm-warp-occupancy/</url></entry><entry><title>About Me</title><content> 
+</content><url>/posts/cuda-sm-warp-occupancy/</url></entry><entry><title>About Me</title><content> 
  A startup programer, Beijing 
  
  Stay foolish, Stay hungry 
-</content><url>//2021/08/01/about/</url></entry><entry><title>博客搭建方法</title><content>   致谢  本博客搭建过程主要参照： 
+</content><url>/2021/08/01/about/</url></entry><entry><title>博客搭建方法</title><content>   致谢  本博客搭建过程主要参照： 
  
   hexo + github/gitee 建站  
   hexo next主题配置  
  
-</content><url>//2021/07/31/博客搭建方法/</url></entry><entry><title>Hello World</title><content> Welcome to  Hexo ! This is your very first post. Check  documentation  for more info. If you get any problems when using Hexo, you can find the answer in  troubleshooting  or you can ask me on  GitHub . 
+</content><url>/2021/07/31/博客搭建方法/</url></entry><entry><title>Hello World</title><content> Welcome to  Hexo ! This is your very first post. Check  documentation  for more info. If you get any problems when using Hexo, you can find the answer in  troubleshooting  or you can ask me on  GitHub . 
    Quick Start    Create a new post       1       $ hexo new  &amp;quot;My New Post&amp;quot;        
 
  More info:  Writing  
@@ -71,4 +71,4 @@
    Deploy to remote sites       1       $ hexo deploy       
 
  More info:  Deployment  
-</content><url>//2021/07/31/hello-world/</url></entry></search>
+</content><url>/2021/07/31/hello-world/</url></entry></search>

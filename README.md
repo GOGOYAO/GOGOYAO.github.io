@@ -1,9 +1,9 @@
-# GOGO 博客
+# GOGO 博客发布结果
 
-网站：https://gogoyao.github.io
+网站：https://gogoyao.github.io/
 
-使用 Codex 新增、修改、预览和发布文章。打开本仓库后，Codex 会读取 [AGENTS.md](AGENTS.md) 并遵循统一流程。
+此 `main` 分支仅承载 GitHub Pages 网页。日常使用 Codex 管理文章，Codex 会自动转到 [`source` 分支](https://github.com/GOGOYAO/GOGOYAO.github.io/tree/source)读取源码和工作规范。
 
-文章和草稿位于 `_blog/source/`。详细说明：[博客管理指南](_blog/README.md)。
+[使用指南](https://github.com/GOGOYAO/GOGOYAO.github.io/blob/source/README.md) · [Codex 工作规范](https://github.com/GOGOYAO/GOGOYAO.github.io/blob/source/AGENTS.md)
 
-根目录是 GitHub Pages 发布结果；文章源项目保存在 `_blog/`，源码与发布页面在同一次提交中更新。
+`publish.json` 记录本次发布对应的源码提交。请修改 source 中的文章或页面再生成，避免手工修补发布结果。
