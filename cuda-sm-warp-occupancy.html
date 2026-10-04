@@ -94,6 +94,8 @@
     .summary-limit.is-bottleneck{background:#fffbeb;border-color:#f5c56b}
     .summary-limit > span{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
     .summary-limit > div{font-size:12px;white-space:nowrap}
+    .summary-limit .limit-hardware{display:block;font-size:11px;line-height:1.4;margin:3px 0 4px;overflow-wrap:anywhere}
+    .summary-limits-caption{font-size:11px;color:var(--muted);margin-bottom:6px}
     .summary-limit b{font-size:18px;margin:0 2px;color:var(--text)}
     .summary-limit.is-bottleneck b{color:#92400e}
     .occbar{
@@ -116,10 +118,11 @@
       .summary-occupancy b{font-size:24px}
       .summary-info{gap:5px;margin:10px 0}
       .summary-limits{grid-template-columns:1fr;gap:4px}
-      .summary-limit{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px}
+      .summary-limit{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 8px}
       .summary-limit > span{font-size:11px;margin-bottom:0;line-height:1.3}
       .summary-limit > div{font-size:11px;line-height:1.3}
       .summary-limit b{font-size:16px}
+      .summary-limit .limit-hardware{font-size:10px;margin:2px 0 0}
       .summary-info{font-size:12px}
     }
     .svgbox{
@@ -390,10 +393,11 @@
         <div class="summary-kernel"><b>${threads}</b> threads/block → <b>${warpsPerBlock}</b> warps/block</div>
         <div class="summary-bottleneck">当前瓶颈：<b>${bottlenecks.join(' + ')}</b></div>
       </div>
+      <div class="summary-limits-caption">示例 SM 的硬件上限 → 当前 Kernel 的 Block 限制</div>
       <div class="summary-limits">
-        ${[['Thread',byThreads],['Register',byRegs],['Shared Memory',bySmem],['Block slot',byBlocks],['Warp slot',byWarps]].map(([label,value]) => `
+        ${[['Thread',byThreads,`${HW.maxThreads} threads`],['Register',byRegs,`${HW.registers.toLocaleString('en-US')} registers`],['Shared Memory',bySmem,`${HW.smem/1024} KB`],['Block slot',byBlocks,`${HW.maxBlocks} blocks`],['Warp slot',byWarps,`${HW.maxWarps} warps`]].map(([label,value,capacity]) => `
           <div class="summary-limit${value===residentBlocks ? ' is-bottleneck' : ''}">
-            <span>${label} 限制：</span><div>最多 <b>${value}</b> blocks / SM</div>
+            <span>${label} 限制：<small class="limit-hardware">SM 上限：${capacity}</small></span><div>最多 <b>${value}</b> blocks / SM</div>
           </div>`).join('')}
       </div>
     `;
