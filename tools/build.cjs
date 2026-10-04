@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const Hexo = require('hexo');
 const matter = require('gray-matter');
+const { articlePage } = require('./lib/article-page.cjs');
 const cheerio = require('cheerio');
 const { root, assets, content, generated, pages, publicDir, buildManifest } = require('./lib/paths.cjs');
 const { files, safePath } = require('./lib/files.cjs');
@@ -60,7 +61,7 @@ async function build({ drafts = false } = {}) {
     const posts = hexo.locals.get('posts').sort('date', -1).toArray()
       .filter(post => (drafts || post.published !== false) && post.date.valueOf() <= Date.now());
     if (new Set(posts.map(post => post.path)).size !== posts.length) throw new Error('Duplicate generated article URLs');
-    const copied = [];
+    const copied = [], fullPages = [];
     const publishedDocuments = posts.map(post => {
       const document = documents.find(item => item.slug === post.article_slug);
       if (document) post.source = document.source;
@@ -76,7 +77,12 @@ async function build({ drafts = false } = {}) {
     for (const post of publishedDocuments) {
       if (!post) throw new Error('Generated article has no content document');
       const route = post.permalink + 'index.html';
-      if (post.fullHTML) writeCopy(post.source, route, true);
+      if (post.fullHTML) {
+        const rendered = posts.find(item => item.article_slug === post.slug);
+        const summary = post.summary ? rendered.excerpt : '';
+        fs.writeFileSync(path.join(publicDir, route), articlePage(post.body, post.title, summary));
+        fullPages.push({ source: post.source, route, title: post.title, summary });
+      }
       for (const file of post.attachments) writeCopy(post.slug + '/' + file, post.permalink + file);
       for (const alias of post.aliases) {
         const aliasRoute = alias.endsWith('/') ? alias + 'index.html' : alias;
@@ -84,7 +90,7 @@ async function build({ drafts = false } = {}) {
         if (fs.existsSync(destination)) throw new Error(`Alias collides with generated route: ${aliasRoute}`);
         fs.mkdirSync(path.dirname(destination), { recursive: true });
         fs.copyFileSync(path.join(publicDir, route), destination);
-        if (post.fullHTML) copied.push({ source: post.source, route: aliasRoute });
+        if (post.fullHTML) fullPages.push({ ...fullPages.find(page => page.route === route), route: aliasRoute });
       }
     }
     fs.writeFileSync(path.join(publicDir, '.nojekyll'), '');
@@ -97,7 +103,7 @@ async function build({ drafts = false } = {}) {
     }
     fs.writeFileSync(path.join(publicDir, 'publish.json'), JSON.stringify({ source_branch: 'main', source_commit: commit, site_url: hexo.config.url }, null, 2) + '\n');
     const routes = files(publicDir);
-    fs.writeFileSync(buildManifest, JSON.stringify({ mode: drafts ? 'drafts' : 'production', routes, copied }, null, 2) + '\n');
+    fs.writeFileSync(buildManifest, JSON.stringify({ mode: drafts ? 'drafts' : 'production', routes, copied, fullPages }, null, 2) + '\n');
     console.log(`Built ${posts.length} ${drafts ? 'preview' : 'published'} articles.`);
     return { posts, routes };
   } finally { await hexo.exit(); }

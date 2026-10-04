@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const cheerio = require('cheerio');
+const { articlePage } = require('./lib/article-page.cjs');
 const { publicDir, buildManifest, content } = require('./lib/paths.cjs');
 const { safePath } = require('./lib/files.cjs');
 function check({ production = true } = {}) {
@@ -44,6 +45,10 @@ function check({ production = true } = {}) {
   for (const post of index) if (!searchURLs.has(normalize('/' + post.path))) fail(`Search entry missing: ${post.title}`);
   for (const page of manifest.copied || []) {
     if (!fs.readFileSync(path.join(content, page.source)).equals(fs.readFileSync(path.join(publicDir, page.route)))) fail(`Article resource changed: ${page.route}`);
+  }
+  for (const page of manifest.fullPages || []) {
+    const expected = articlePage(fs.readFileSync(path.join(content, page.source), 'utf8'), page.title, page.summary);
+    if (fs.readFileSync(path.join(publicDir, page.route), 'utf8') !== expected) fail(`Full HTML article changed: ${page.route}`);
   }
   if (failures.length) throw new Error([...new Set(failures)].join('\n'));
   console.log(`Checks passed: ${index.length} articles; home, archives, taxonomies, search, local links and raw HTML.`);

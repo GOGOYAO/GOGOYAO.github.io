@@ -14,7 +14,7 @@ test.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
 test('existing URLs and complete CUDA document remain intact', () => {
   run('build'); run('check'); assert.equal(inventory().length, 4);
   const original = fs.readFileSync(path.join(fixture, 'content/cuda-sm-warp-occupancy/content.html'));
-  for (const route of ['posts/cuda-sm-warp-occupancy/index.html', 'cuda-sm-warp-occupancy.html']) assert(fs.readFileSync(output(route)).equals(original));
+  for (const route of ['posts/cuda-sm-warp-occupancy/index.html', 'cuda-sm-warp-occupancy.html']) { const page = fs.readFileSync(output(route), 'utf8'); assert(page.includes('data-blog-summary')); assert(page.includes('交互图把硬件容量')); assert(page.includes(original.toString().match(/<script>[\s\S]*?<\/script>/)[0])); }
   assert(inventory().some(post => post.path === '2021/07/31/博客搭建方法/'));
   assert.equal(JSON.parse(fs.readFileSync(output('publish.json'))).source_branch, 'main');
 });
@@ -37,7 +37,8 @@ test('HTML drafts and attachments preview, publish and withdraw solely through s
   fs.writeFileSync(path.join(fixture, 'content/qa-html/app.js'), 'window.ready=true;');
   run('build'); assert(!fs.existsSync(output('posts/qa-html')));
   run('build', '--drafts'); run('check', '--drafts');
-  assert(fs.readFileSync(output('posts/qa-html/index.html')).equals(fs.readFileSync(file)));
+  assert(fs.readFileSync(output('posts/qa-html/index.html'), 'utf8').includes('<h1>HTML content</h1><script src="app.js"></script>'));
+  assert(fs.readFileSync(output('posts/qa-html/index.html'), 'utf8').includes('data-blog-header'));
   assert(fs.existsSync(output('posts/qa-html/app.js')));
   assert.throws(() => run('check'), /Draft preview cannot be published/);
   status('qa-html', 'published'); run('build'); run('check'); assert.equal(inventory().length, 5);

@@ -10,7 +10,7 @@
     </div>
     <% if(full) { %><div class="tocbot"></div><% } %>
     <div class="article-entry" itemprop="articleBody">
-      <% if(full) { %><%- post.content %><% } else if(post.excerpt) { %><%- post.excerpt %><% } else { %><p><%= post.description || truncate(strip_html(post.content), {length:200}) %></p><% } %>
+      <% if(full) { %><% if(post.article_summary) { %><div data-blog-summary style="padding:12px 16px;margin-bottom:24px;background:#f7f8fa;border-left:3px solid #2563eb"><%- post.excerpt %></div><% } %><%- post.content %><% } else if(post.excerpt) { %><%- post.excerpt %><% } else { %><p><%= post.description || truncate(strip_html(post.content), {length:200}) %></p><% } %>
       <% if(!full) { %><p><a class="article-more-link" href="<%= url_for(post.path) %>">阅读全文 →</a></p><% } %>
     </div>
     <footer class="article-footer"><%- list_tags(post.tags, {class:'article-tag', show_count:false}) %></footer>
