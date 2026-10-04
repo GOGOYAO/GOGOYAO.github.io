@@ -1,0 +1,23 @@
+<article class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  <div class="article-inner">
+    <header class="article-header">
+      <% if(full) { %><h1 class="article-title sea-center" style="border-left:0" itemprop="name"><%= post.title %></h1>
+      <% } else { %><h2 itemprop="name"><a class="article-title" href="<%= url_for(post.path) %>"><%= post.title %></a></h2><% } %>
+    </header>
+    <div class="article-meta">
+      <a class="article-date" href="<%= url_for(post.path) %>"><time datetime="<%= date_xml(post.date) %>"><%= date(post.date, 'YYYY-MM-DD') %></time></a>
+      <div class="article-category"><% post.categories.forEach(function(category) { %><a class="article-category-link" href="<%= url_for(category.path) %>"><%= category.name %></a><% }) %></div>
+    </div>
+    <% if(full) { %><div class="tocbot"></div><% } %>
+    <div class="article-entry" itemprop="articleBody">
+      <% if(full) { %><%- post.content %><% } else if(post.excerpt) { %><%- post.excerpt %><% } else { %><p><%= post.description || truncate(strip_html(post.content), {length:200}) %></p><% } %>
+      <% if(!full) { %><p><a class="article-more-link" href="<%= url_for(post.path) %>">阅读全文 →</a></p><% } %>
+    </div>
+    <footer class="article-footer"><%- list_tags(post.tags, {class:'article-tag', show_count:false}) %></footer>
+    <% if(full) { %><div class="declare"><ul class="post-copyright"><li>版权声明：本博客文章除特别声明外，著作权归作者所有。转载请注明出处。</li></ul></div><% } %>
+  </div>
+  <% if(full && (post.prev || post.next)) { %><nav class="article-nav">
+    <% if(post.prev) { %><a class="article-nav-link" href="<%= url_for(post.prev.path) %>"><strong class="article-nav-caption">上一篇</strong><div class="article-nav-title"><%= post.prev.title %></div></a><% } %>
+    <% if(post.next) { %><a class="article-nav-link" href="<%= url_for(post.next.path) %>"><strong class="article-nav-caption">下一篇</strong><div class="article-nav-title"><%= post.next.title %></div></a><% } %>
+  </nav><% } %>
+</article>

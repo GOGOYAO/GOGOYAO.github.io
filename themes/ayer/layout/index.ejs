@@ -1,0 +1,6 @@
+<%- partial('_cover') %>
+<div id="main"><section class="outer">
+<%- partial('_home-extras') %>
+<article class="articles"><% if (!page.posts.length) { %><p class="article-entry">暂无已发布文章。</p><% } %><% page.posts.each(function(post) { %><%- partial('_post', {post, full:false}) %><% }); %></article>
+<% if(page.total > 1) { %><nav id="page-nav"><%- paginator({prev_text:'上一页', next_text:'下一页'}) %></nav><% } %>
+</section></div>

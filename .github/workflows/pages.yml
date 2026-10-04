@@ -1,0 +1,45 @@
+name: Publish blog
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run publish
+      - name: Migrate Pages to Actions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method PUT repos/${{ github.repository }}/pages -f build_type=workflow
+      - uses: actions/configure-pages@v5
+      - run: rm public/.build.json
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+      - uses: actions/deploy-pages@v4
+        id: deployment
+      - name: Remove retired source branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          old=$(gh api repos/${{ github.repository }}/git/ref/heads/source --jq .object.sha)
+          test "$old" = "f6887abc538ecaa833ea16af4a045e63af5db34c"
+          gh api --method DELETE repos/${{ github.repository }}/git/refs/heads/source
