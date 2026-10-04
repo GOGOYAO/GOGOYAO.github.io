@@ -4,7 +4,8 @@ module.exports = {
   root,
   content: path.join(root, 'content'),
   assets: path.join(root, 'assets'),
-  interactive: path.join(root, 'content/interactive'),
+  generated: path.join(root, '.build-content'),
+  pages: path.join(root, 'pages'),
   publicDir: path.join(root, 'public'),
   buildManifest: path.join(root, 'public/.build.json'),
 };

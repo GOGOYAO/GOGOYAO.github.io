@@ -10,9 +10,9 @@
     "preview": "node tools/preview.cjs",
     "preview-drafts": "node tools/build.cjs --drafts && node tools/preview.cjs",
     "list": "node tools/list.cjs",
-    "import-html": "node tools/import-html.cjs",
     "test": "node --test tests/*.test.cjs",
-    "publish": "npm run build && npm run check"
+    "publish": "npm run build && npm run check",
+    "import": "node tools/import.cjs"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

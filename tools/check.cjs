@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const cheerio = require('cheerio');
-const { publicDir, buildManifest, interactive } = require('./lib/paths.cjs');
+const { publicDir, buildManifest, content } = require('./lib/paths.cjs');
 const { safePath } = require('./lib/files.cjs');
 function check({ production = true } = {}) {
   const manifest = JSON.parse(fs.readFileSync(buildManifest, 'utf8'));
@@ -42,11 +42,8 @@ function check({ production = true } = {}) {
   const search = cheerio.load(fs.readFileSync(path.join(publicDir, 'search.xml'), 'utf8'), { xmlMode: true });
   const searchURLs = new Set(search('entry > url').map((_, el) => normalize(search(el).text())).get());
   for (const post of index) if (!searchURLs.has(normalize('/' + post.path))) fail(`Search entry missing: ${post.title}`);
-  for (const file of manifest.interactive || []) {
-    if (!fs.readFileSync(path.join(interactive, file)).equals(fs.readFileSync(path.join(publicDir, file)))) fail(`Interactive HTML changed: ${file}`);
-  }
-  for (const page of manifest.fullHTML || []) {
-    if (!fs.readFileSync(path.join(interactive, page.source)).equals(fs.readFileSync(path.join(publicDir, page.route)))) fail(`Full HTML article changed: ${page.route}`);
+  for (const page of manifest.copied || []) {
+    if (!fs.readFileSync(path.join(content, page.source)).equals(fs.readFileSync(path.join(publicDir, page.route)))) fail(`Article resource changed: ${page.route}`);
   }
   if (failures.length) throw new Error([...new Set(failures)].join('\n'));
   console.log(`Checks passed: ${index.length} articles; home, archives, taxonomies, search, local links and raw HTML.`);

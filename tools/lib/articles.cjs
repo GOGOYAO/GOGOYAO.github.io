@@ -4,28 +4,39 @@ const matter = require('gray-matter');
 const { content } = require('./paths.cjs');
 const { files, safePath } = require('./files.cjs');
 function articles({ drafts = false } = {}) {
-  return ['_posts', ...(drafts ? ['_drafts'] : [])].flatMap(folder =>
-    files(path.join(content, folder)).filter(file => /\.(md|html)$/.test(file)).map(file => {
-      const source = `${folder}/${file}`;
-      const { data, content: body } = matter(fs.readFileSync(path.join(content, source), 'utf8'));
-      if (typeof data.title !== 'string' || !data.title.trim()) throw new Error(`${source}: missing title`);
-      if (!data.date || Number.isNaN(new Date(data.date).valueOf())) throw new Error(`${source}: invalid date`);
-      safePath(data.permalink);
-      if (!data.permalink.endsWith('/')) throw new Error(`${source}: permalink must end with /`);
-      if (!Array.isArray(data.tags) || !Array.isArray(data.categories)) throw new Error(`${source}: categories/tags must be arrays`);
-      if (data.display && data.display !== 'full-html') throw new Error(`${source}: unsupported display mode`);
-      if (data.display === 'full-html' && typeof data.interactive !== 'string') throw new Error(`${source}: full-html needs one interactive document`);
-      if (!body.trim()) throw new Error(`${source}: empty article`);
-      return { source, body, ...data, draft: folder === '_drafts' };
-    })
-  );
+  const posts = [];
+  for (const entry of fs.readdirSync(content, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.name)) throw new Error(`content/${entry.name}: use one english-slug folder per article`);
+    const dir = path.join(content, entry.name);
+    const meta = path.join(dir, 'meta.md');
+    if (!fs.existsSync(meta)) throw new Error(`${entry.name}: missing meta.md`);
+    const { data, content: summary } = matter(fs.readFileSync(meta, 'utf8'));
+    const fail = reason => { throw new Error(`${entry.name}: ${reason}`); };
+    if (typeof data.title !== 'string' || !data.title.trim()) fail('missing title');
+    if (!data.date || Number.isNaN(new Date(data.date).valueOf())) fail('invalid date');
+    if (!['draft', 'published'].includes(data.status)) fail('status must be draft or published');
+    for (const key of ['categories', 'tags']) if (!Array.isArray(data[key]) || data[key].some(value => typeof value !== 'string' || !value.trim())) fail(`${key} must be an array of names`);
+    const documents = ['content.md', 'content.html'].filter(file => fs.existsSync(path.join(dir, file)));
+    if (documents.length !== 1) fail('provide exactly one content.md or content.html');
+    const file = documents[0], body = fs.readFileSync(path.join(dir, file), 'utf8');
+    if (!body.trim()) fail('empty content document');
+    const permalink = safePath(data.permalink || `posts/${entry.name}/`);
+    if (!permalink.endsWith('/')) fail('permalink must end with /');
+    const aliases = data.aliases || [];
+    if (!Array.isArray(aliases)) fail('aliases must be an array');
+    aliases.forEach(safePath);
+    const attachments = files(dir).filter(item => !['meta.md', file].includes(item));
+    const draft = data.status === 'draft';
+    if (draft && !drafts) continue;
+    posts.push({ ...data, slug: entry.name, dir, source: `${entry.name}/${file}`, file, body, summary: summary.trim(), draft, permalink, aliases, attachments, fullHTML: file.endsWith('.html') && /<!doctype\s+html|<(html|head|body)(\s|>)/i.test(body) });
+  }
+  return posts;
 }
 function validateArticles(options) {
-  const posts = articles(options);
-  const urls = new Set();
-  for (const post of posts) {
-    if (urls.has(post.permalink)) throw new Error(`Duplicate permalink: ${post.permalink}`);
-    urls.add(post.permalink);
+  const posts = articles(options), urls = new Set();
+  for (const post of posts) for (const route of [post.permalink + 'index.html', ...post.aliases.map(alias => alias.endsWith('/') ? alias + 'index.html' : alias)]) {
+    if (urls.has(route)) throw new Error(`Duplicate article URL: ${route}`);
+    urls.add(route);
   }
   return posts;
 }
