@@ -20,6 +20,41 @@ body.darkmode .ads.aliyun-promo small,body.darkmode .ads.aliyun-promo .aliyun-pr
 .ads.aliyun-promo>a:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
 @media(max-width:1500px){.ads.aliyun-promo{position:static;transform:none;width:100%;margin:24px 0 0}}
 </style>
+<script>
+(() => {
+  const card = document.querySelector('.aliyun-promo');
+  if (!card) return;
+  const anchor = document.createElement('div');
+  card.before(anchor);
+  const desktop = matchMedia('(min-width:1501px)');
+  let queued = false;
+  const position = () => {
+    queued = false;
+    if (!desktop.matches) {
+      card.style.removeProperty('position');
+      card.style.removeProperty('top');
+      card.style.removeProperty('left');
+      card.style.removeProperty('right');
+      card.style.removeProperty('transform');
+      return;
+    }
+    const container = anchor.parentElement.getBoundingClientRect();
+    const start = anchor.getBoundingClientRect().top + 50;
+    card.style.position = 'fixed';
+    card.style.right = 'auto';
+    card.style.transform = 'none';
+    card.style.left = (container.right + 28) + 'px';
+    card.style.top = Math.max(24, Math.min(start, innerHeight - card.offsetHeight - 24)) + 'px';
+  };
+  const schedule = () => {
+    if (!queued) { queued = true; requestAnimationFrame(position); }
+  };
+  addEventListener('scroll', schedule, { passive: true });
+  addEventListener('resize', schedule);
+  addEventListener('load', schedule);
+  position();
+})();
+</script>
 <div class="notice" style="margin-top:50px">
     <i class="ri-heart-fill"></i>
     <div class="notice-content" id="broad"></div>
