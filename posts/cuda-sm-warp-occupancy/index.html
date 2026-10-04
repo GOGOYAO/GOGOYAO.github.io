@@ -1,468 +1,450 @@
 <!DOCTYPE html>
-
-
 <html lang="zh-CN">
-  
-
-    <head>
-      <meta charset="utf-8" />
-        
-      <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1"
-      />
-      <title>CUDA：SM 资源限制、Warp 调度与 Occupancy | GOGO</title>
-  <meta name="generator" content="hexo-theme-ayer">
-      
-      <link rel="shortcut icon" href="/favicon.ico" />
-       
-<link rel="stylesheet" href="/dist/main.css">
-
-      <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css"
-      />
-      
-<link rel="stylesheet" href="/css/custom.css">
- 
-      <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
-       
- 
-
-      <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bulma@5.0.1/bulma.min.css"
-      />
-      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.min.js"></script>
-
-      <!-- mermaid -->
-      
-      <style>
-        .swal2-styled.swal2-confirm {
-          font-size: 1.6rem;
-        }
-      </style>
-    <meta name="description" content="从每个 Block 的资源占用出发，理解 SM 驻留数量、瓶颈、Warp 调度和 Occupancy，并用交互图观察参数变化。"><link rel="stylesheet" href="/css/blog-content.css"></head>
-
-
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CUDA：SM 资源限制、Warp 调度与 Occupancy</title>
+  <style>
+    :root{
+      --bg:#f7f8fa;
+      --card:#ffffff;
+      --panel:#f1f3f5;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --border:#d1d5db;
+      --accent:#2563eb;
+      --series2:#60a5fa;
+      --series3:#34d399;
+      --series4:#a78bfa;
+      --series5:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:1520px;margin:0 auto;padding:24px}
+    h1{font-size:28px;margin:0 0 8px}
+    .sub{color:var(--muted);margin-bottom:20px}
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:18px;
+      margin-bottom:18px;
+    }
+    .card h2{font-size:18px;margin:0 0 14px}
+    .controls{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:14px;
+    }
+    label span{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    select{
+      width:100%;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:white;
+      color:var(--text);
+      font-size:15px;
+    }
+    .summary{
+      margin-top:14px;
+      background:var(--panel);
+      border-radius:10px;
+      padding:14px;
+      line-height:1.5;
+      font-size:14px;
+    }
+    .summary-top{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 150px;
+      gap:12px 24px;
+      align-items:center;
+    }
+    .summary-result{min-width:0}
+    .summary-result > span{display:block;color:var(--muted);font-size:12px;margin-bottom:3px}
+    .summary-result b{font-size:22px;line-height:1.4}
+    .summary-occupancy{min-width:0}
+    .summary-occupancy > div:first-child{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+    .summary-occupancy span{color:var(--muted);font-size:12px}
+    .summary-occupancy b{font-size:26px;color:#087f5b;line-height:1.2}
+    .summary-info{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:baseline;
+      gap:6px 24px;
+      margin:9px 0 12px;
+      font-size:13px;
+    }
+    .summary-kernel{color:var(--muted)}
+    .summary-bottleneck{min-width:0;overflow-wrap:anywhere}
+    .summary-bottleneck b{color:#92400e}
+    .summary-limits{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+    .summary-limit{
+      min-width:0;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:8px 10px;
+    }
+    .summary-limit.is-bottleneck{background:#fffbeb;border-color:#f5c56b}
+    .summary-limit > span{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
+    .summary-limit > div{font-size:12px}
+    .summary-limit > div:last-child{white-space:nowrap}
+    .summary-limit .limit-hardware{display:block;font-size:11px;line-height:1.4;margin:3px 0 4px;overflow-wrap:anywhere}
+    .summary-limits-caption{font-size:11px;color:var(--muted);margin-bottom:6px}
+    .summary-limit b{font-size:18px;margin:0 2px;color:var(--text)}
+    .summary-limit.is-bottleneck b{color:#92400e}
+    .resource-rows{margin:5px 0 7px;display:grid;gap:3px}
+    .resource-row{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:11px;line-height:1.4;flex-wrap:wrap}
+    .resource-row > span:first-child{color:var(--muted)}
+    .resource-row > span:last-child{font-variant-numeric:tabular-nums;font-weight:600}
+    .resource-calculation{font-size:11px!important;line-height:1.4;background:var(--panel);border-radius:4px;padding:4px 6px;margin:5px 0}
+    .resource-resident{font-size:11px!important;line-height:1.5;margin-top:5px;color:var(--muted);white-space:normal!important}
+    .resource-resident strong{color:var(--text);font-weight:600}
+    .resource-conclusion{font-size:12px;color:var(--muted);line-height:1.6;margin-top:9px}
+    .resource-conclusion b{color:var(--text)}
+    .resource-target-note{font-size:12px;margin:0 0 8px;color:var(--muted);overflow-wrap:anywhere}
+    .resource-target-note b{color:var(--text)}
+    .occbar{
+      margin-top:6px;
+      height:6px;
+      background:#dfe4e9;
+      border-radius:999px;
+      overflow:hidden;
+    }
+    .occfill{height:100%;background:var(--series3);width:0;transition:width .2s}
+    @media (max-width:1050px){
+      .summary-limits{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
+    @media (max-width:600px){
+      .summary{padding:12px}
+      .summary-top{grid-template-columns:minmax(0,1fr) 92px;gap:12px}
+      .summary-result b{font-size:16px}
+      .summary-occupancy > div:first-child{display:block}
+      .summary-occupancy span{display:block}
+      .summary-occupancy b{font-size:24px}
+      .summary-info{gap:5px;margin:10px 0}
+      .summary-limits{grid-template-columns:1fr;gap:4px}
+      .summary-limit{display:block;padding:8px 10px}
+      .resource-rows{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px}
+      .resource-row{display:block}
+      .resource-row > span{display:block}
+      .summary-limit > span{font-size:11px;margin-bottom:0;line-height:1.3}
+      .summary-limit > div{font-size:11px;line-height:1.3}
+      .summary-limit b{font-size:16px}
+      .summary-limit .limit-hardware{font-size:10px;margin:2px 0 0}
+      .summary-info{font-size:12px}
+    }
+    .svgbox{
+      overflow-x:auto;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:12px;
+      margin-bottom:18px;
+    }
+    svg{min-width:1400px;width:100%;height:auto}
+    .note{
+      line-height:1.8;
+      color:var(--muted);
+      font-size:14px;
+    }
+    @media (max-width:760px){
+      .wrap{padding:14px}
+      .controls{grid-template-columns:1fr}
+    }
+  </style>
+</head>
 <body>
-  <div id="app">
-    
-      
-    <main class="content on">
-      <section class="outer"><article class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
-  <div class="article-inner">
-    <header class="article-header">
-      <h1 class="article-title sea-center" style="border-left:0" itemprop="name">CUDA：SM 资源限制、Warp 调度与 Occupancy</h1>
-      
-    </header>
-    <div class="article-meta">
-      <a class="article-date" href="/posts/cuda-sm-warp-occupancy/"><time datetime="2026-10-03T16:00:00.000Z">2026-10-04</time></a>
-      <div class="article-category"><a class="article-category-link" href="/categories/GPU-%E7%BC%96%E7%A8%8B/">GPU 编程</a></div>
+<div class="wrap">
+  <h1>CUDA：SM 资源限制、Warp 调度与 Occupancy</h1>
+  <div class="sub">从 Kernel 资源需求出发，观察它如何限制 resident blocks / warps，并进一步影响 occupancy 与 SM 内部调度。</div>
+
+  <div class="card">
+    <h2>① Kernel 资源需求</h2>
+    <div class="controls">
+      <label>
+        <span>Threads / Block</span>
+        <select id="tpb">
+          <option value="128">128</option>
+          <option value="256" selected>256</option>
+          <option value="512">512</option>
+        </select>
+      </label>
+      <label>
+        <span>Registers / Thread</span>
+        <select id="rpt">
+          <option value="32">32</option>
+          <option value="64" selected>64</option>
+          <option value="96">96</option>
+          <option value="128">128</option>
+        </select>
+      </label>
+      <label>
+        <span>Shared Memory / Block</span>
+        <select id="smem">
+          <option value="0">0 KB</option>
+          <option value="8192">8 KB</option>
+          <option value="16384" selected>16 KB</option>
+          <option value="32768">32 KB</option>
+        </select>
+      </label>
     </div>
-    <div class="tocbot"></div>
-    <div class="article-entry" itemprop="articleBody">
-      <p>一个 SM 能驻留多少个 Block，取决于 Threads、Registers、Shared Memory、Block slots 和 Warp slots 的共同限制。交互图把硬件容量、每个 Block 的占用、允许的 Block 数和最终驻留用量放在一起，便于理解瓶颈。</p>
-<span id="more"></span>
+    <div id="summary" class="summary"></div>
+  </div>
 
-<h2 id="打开交互示意图"><a href="#打开交互示意图" class="headerlink" title="打开交互示意图"></a>打开交互示意图</h2><p><a class="interactive-link" href="/cuda-sm-warp-occupancy.html" target="_blank" rel="noopener">打开 CUDA SM &#x2F; Warp &#x2F; Occupancy 交互图 ↗</a></p>
-<p>可调整每个 Block 的线程数、每个线程的寄存器数，以及每个 Block 的共享内存。图中 SM 参数是一组教学示例，具体 GPU 的硬件上限应按型号确定。</p>
-<h2 id="如何理解资源限制"><a href="#如何理解资源限制" class="headerlink" title="如何理解资源限制"></a>如何理解资源限制</h2><p>对每项资源，先用 <strong>SM 容量 ÷ 每个 Block 占用</strong>，向下取整，得到该资源允许的完整 Block 数；再取各项的最小值。</p>
-<p>默认示例为 256 threads&#x2F;block、64 registers&#x2F;thread、16 KB shared memory&#x2F;block：</p>
-<table>
-<thead>
-<tr>
-<th>资源</th>
-<th align="right">SM 容量</th>
-<th align="right">每个 Block 占用</th>
-<th align="right">最多允许 Blocks</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>Threads</td>
-<td align="right">2,048</td>
-<td align="right">256</td>
-<td align="right">8</td>
-</tr>
-<tr>
-<td>Registers</td>
-<td align="right">65,536</td>
-<td align="right">16,384</td>
-<td align="right">4</td>
-</tr>
-<tr>
-<td>Shared Memory</td>
-<td align="right">64 KB</td>
-<td align="right">16 KB</td>
-<td align="right">4</td>
-</tr>
-<tr>
-<td>Block slots</td>
-<td align="right">32</td>
-<td align="right">1</td>
-<td align="right">32</td>
-</tr>
-<tr>
-<td>Warp slots</td>
-<td align="right">64</td>
-<td align="right">8</td>
-<td align="right">8</td>
-</tr>
-</tbody></table>
-<p>最终驻留 Blocks &#x3D; min(8, 4, 4, 32, 8) &#x3D; <strong>4</strong>。</p>
-<p>每个 Block 有 8 个 Warps，因此驻留 Warps &#x3D; 4 × 8 &#x3D; <strong>32</strong>，Occupancy &#x3D; 32 &#x2F; 64 &#x3D; <strong>50%</strong>。</p>
-<p>瓶颈不一定表示资源完全用尽；剩余资源也可能不足以容纳一个完整 Block。</p>
-<h2 id="驻留与调度"><a href="#驻留与调度" class="headerlink" title="驻留与调度"></a>驻留与调度</h2><p>Block 被分配到 SM 后，它包含的 Warps 成为 resident warps，并占用相应资源。Resident 不表示此刻都在执行：Warp Scheduler 从 ready warps 中选择并 issue 指令，交由相应执行单元处理。</p>
+  <div class="svgbox">
+    <svg viewBox="0 0 1430 692" role="img" aria-label="CUDA Grid Block SM 资源限制 Warp Scheduler Occupancy 全流程">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="currentColor"></path>
+        </marker>
+      </defs>
 
-      
+      <text x="25" y="28" font-size="16" font-weight="700">② Grid / Block</text>
+      <rect x="20" y="42" width="270" height="630" rx="14" fill="var(--card)" stroke="var(--border)"/>
+      <text x="40" y="72" font-size="14" font-weight="700">Grid</text>
+      <text x="40" y="92" font-size="11" fill="var(--muted)">一次 kernel launch 的全部 blocks</text>
+      <g id="grid"></g>
+      <text x="40" y="605" font-size="12" fill="var(--muted)">Block 是被分配到 SM 的单位</text>
+      <text x="40" y="625" font-size="12" fill="var(--muted)">一个 Block 不跨 SM</text>
+
+      <line x1="295" y1="335" x2="425" y2="335" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="357" text-anchor="middle" y="318" font-size="11" fill="var(--muted)">调度 block</text>
+
+      <text x="435" y="28" font-size="16" font-weight="700">③ 一个 SM：资源容量决定能放多少 Block</text>
+      <rect x="425" y="42" width="510" height="630" rx="14" fill="var(--card)" stroke="var(--border)"/>
+
+      <text x="445" y="72" font-size="14" font-weight="700">示例 SM 的硬件上限</text>
+      <g id="limits"></g>
+
+      <text x="445" y="258" font-size="14" font-weight="700">当前 Kernel 每个 Block 的资源需求</text>
+      <g id="perBlock"></g>
+
+      <text x="445" y="372" font-size="14" font-weight="700">每项资源分别最多支持多少 Blocks</text>
+      <g id="constraints"></g>
+
+      <rect x="445" y="552" width="470" height="105" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="465" y="577" font-size="13" font-weight="700">最终 Resident Blocks</text>
+      <text id="residentFormula" x="465" y="602" font-size="12"></text>
+      <text id="residentWarpsFormula" x="465" y="626" font-size="12"></text>
+      <text id="bottleneck" x="465" y="650" font-size="12" font-weight="700"></text>
+
+      <line x1="940" y1="335" x2="1100" y2="335" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="1015" text-anchor="middle" y="318" font-size="11" fill="var(--muted)">形成 resident warps</text>
+
+      <text x="1110" y="28" font-size="16" font-weight="700">④ Warp Scheduler</text>
+      <rect x="1100" y="42" width="310" height="630" rx="14" fill="var(--card)" stroke="var(--border)"/>
+
+      <rect x="1120" y="85" width="270" height="125" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="1135" y="110" font-size="13" font-weight="700">Resident Warps</text>
+      <text id="residentWarpText" x="1135" y="133" font-size="12"></text>
+      <text x="1135" y="155" font-size="11" fill="var(--muted)"><tspan x="1135">都已占用寄存器 / 所属 block 的 </tspan><tspan x="1135" dy="17">shared memory / warp slot</tspan></text>
+      <text x="1135" y="194" font-size="11" fill="var(--muted)">但不代表此刻都在执行</text>
+
+      <line x1="1255" y1="215" x2="1255" y2="230" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+
+      <rect x="1120" y="240" width="270" height="100" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="1135" y="265" font-size="13" font-weight="700">运行时状态</text>
+      <rect x="1140" y="285" width="95" height="32" rx="6" fill="var(--series3)" opacity="0.75"/>
+      <text x="1187" y="305" text-anchor="middle" font-size="11">Ready</text>
+      <rect x="1260" y="285" width="95" height="32" rx="6" fill="var(--series5)" opacity="0.75"/>
+      <text x="1307" y="305" text-anchor="middle" font-size="11">Stalled</text>
+
+      <line x1="1255" y1="345" x2="1255" y2="380" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+
+      <rect x="1140" y="390" width="230" height="75" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="1255" y="417" text-anchor="middle" font-size="13" font-weight="700">Warp Scheduler</text>
+      <text x="1255" y="440" text-anchor="middle" font-size="11" fill="var(--muted)">从 ready warps 中挑选并 issue</text>
+
+      <line x1="1255" y1="470" x2="1255" y2="505" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+
+      <rect x="1130" y="515" width="250" height="85" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="1255" y="542" text-anchor="middle" font-size="13" font-weight="700">执行单元</text>
+      <text x="1255" y="565" text-anchor="middle" font-size="11" fill="var(--muted)">CUDA Core / Tensor Core</text>
+      <text x="1255" y="584" text-anchor="middle" font-size="11" fill="var(--muted)">Load/Store Unit / SFU</text>
+
+      <text x="1135" y="625" font-size="12" font-weight="700">Occupancy</text>
+      <text id="occSvg" x="1135" y="645" font-size="12"></text>
+    </svg>
+  </div>
+
+  <div class="card">
+    <h2>⑤ 核心逻辑</h2>
+    <div class="note">
+      一个 SM 不是先决定“我要 64 个 warp”，而是不断装入 Block。每装入一个 Block，就同时消耗 threads、registers、shared memory、block slot 和 warp slot。
+      任意一种资源先达到上限，就不能继续装新的 Block。最终：
+      <b>resident blocks × warps/block = resident warps</b>，而 occupancy = resident warps / SM 最大 warps。
+      Resident warp 只是“已经驻留并占资源”，真正每周期执行哪些 warp，还要由 Warp Scheduler 从 ready warps 中选择并 issue。
     </div>
-    <footer class="article-footer"><ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CUDA/" rel="tag">CUDA</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/GPU/" rel="tag">GPU</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/LLM-%E6%8E%A8%E7%90%86/" rel="tag">LLM 推理</a></li></ul></footer>
-    <div class="declare"><ul class="post-copyright"><li>版权声明：本博客文章除特别声明外，著作权归作者所有。转载请注明出处。</li></ul></div>
   </div>
-  <nav class="article-nav">
-    
-    <a class="article-nav-link" href="/2021/08/01/about/"><strong class="article-nav-caption">下一篇</strong><div class="article-nav-title">About Me</div></a>
-  </nav>
-</article>
-</section>
-
-      <footer class="footer">
-  <div class="outer">
-    <ul>
-      <li>
-        Copyrights &copy;
-        2015-2026
-        <i class="ri-heart-fill heart_icon"></i> GOGOYAO
-      </li>
-    </ul>
-    <ul>
-      <li>
-        
-      </li>
-    </ul>
-    <ul>
-      <li>
-        
-        
-        <span>
-  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span></span>
-  <span class="division">|</span>
-  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
-</span>
-        
-      </li>
-    </ul>
-    <ul>
-      
-    </ul>
-    <ul>
-      
-    </ul>
-    <ul>
-      <li>
-        <!-- cnzz统计 -->
-        
-        <script type="text/javascript" src='https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914'></script>
-        
-      </li>
-    </ul>
-  </div>
-</footer>
-      <div class="float_btns">
-        <div class="totop" id="totop">
-  <i class="ri-arrow-up-line"></i>
 </div>
 
-<div class="todark" id="todark">
-  <i class="ri-moon-line"></i>
-</div>
+<script>
+(() => {
+  const HW = {
+    maxWarps: 64,
+    maxThreads: 2048,
+    maxBlocks: 32,
+    registers: 65536,
+    smem: 65536
+  };
 
+  const tpb = document.getElementById('tpb');
+  const rpt = document.getElementById('rpt');
+  const smem = document.getElementById('smem');
+
+  const grid = document.getElementById('grid');
+  const limits = document.getElementById('limits');
+  const perBlock = document.getElementById('perBlock');
+  const constraints = document.getElementById('constraints');
+  const residentFormula = document.getElementById('residentFormula');
+  const residentWarpsFormula = document.getElementById('residentWarpsFormula');
+  const bottleneck = document.getElementById('bottleneck');
+  const residentWarpText = document.getElementById('residentWarpText');
+  const occSvg = document.getElementById('occSvg');
+  const summary = document.getElementById('summary');
+
+  function renderGrid(threads){
+    const warps = threads / 32;
+    let s = '';
+    for(let i=0;i<8;i++){
+      const x = 45 + (i%2)*115;
+      const y = 125 + Math.floor(i/2)*95;
+      s += `<rect x="${x}" y="${y}" width="100" height="72" rx="8" fill="var(--panel)" stroke="var(--border)"/>`;
+      s += `<text x="${x+10}" y="${y+21}" font-size="11" font-weight="700">Block ${i}</text>`;
+      s += `<text x="${x+10}" y="${y+41}" font-size="10" fill="var(--muted)">${threads} threads</text>`;
+      s += `<text x="${x+10}" y="${y+58}" font-size="10" fill="var(--muted)">${warps} warps</text>`;
+    }
+    grid.innerHTML = s;
+  }
+
+  function limitRow(y,label,value,unit){
+    return `<rect x="445" y="${y}" width="450" height="26" rx="6" fill="var(--panel)"/>
+            <text x="455" y="${y+18}" font-size="11">${label}</text>
+            <text x="880" y="${y+18}" text-anchor="end" font-size="11" font-weight="700">${value} ${unit}</text>`;
+  }
+
+  function constraintRow(y,label,maxBlocks,isBottle){
+    const fill = isBottle ? 'var(--series5)' : 'var(--panel)';
+    const opacity = isBottle ? '0.72' : '1';
+    return `<rect x="445" y="${y}" width="450" height="25" rx="6" fill="${fill}" opacity="${opacity}" stroke="var(--border)"/>
+            <text x="457" y="${y+17}" font-size="11">${label}</text>
+            <text x="880" y="${y+17}" text-anchor="end" font-size="11" font-weight="700">
+              ${maxBlocks === Infinity ? '不限制 Block 数' : `最多 ${maxBlocks} blocks / SM`}${isBottle ? '  ← 瓶颈' : ''}
+            </text>`;
+  }
+
+  function update(){
+    const threads = Number(tpb.value);
+    const regs = Number(rpt.value);
+    const smemBlock = Number(smem.value);
+
+    const warpsPerBlock = threads / 32;
+    const regsPerBlock = threads * regs;
+
+    const byThreads = Math.floor(HW.maxThreads / threads);
+    const byRegs = Math.floor(HW.registers / regsPerBlock);
+    const bySmem = smemBlock === 0 ? Infinity : Math.floor(HW.smem / smemBlock);
+    const byBlocks = HW.maxBlocks;
+    const byWarps = Math.floor(HW.maxWarps / warpsPerBlock);
+
+    const vals = [byThreads, byRegs, bySmem, byBlocks, byWarps];
+    const residentBlocks = Math.min(...vals);
+    const residentWarps = residentBlocks * warpsPerBlock;
+    const occ = residentWarps / HW.maxWarps;
+
+    const labels = ['Thread 数量','Register 数量','Shared Memory','Block slot','Warp slot'];
+    const bottlenecks = labels.filter((_,i)=>vals[i]===residentBlocks);
+
+    renderGrid(threads);
+
+    limits.innerHTML =
+      limitRow(92,'最大 Threads / SM',HW.maxThreads,'threads') +
+      limitRow(124,'最大 Warps / SM',HW.maxWarps,'warps') +
+      limitRow(156,'最大 Blocks / SM',HW.maxBlocks,'blocks') +
+      limitRow(188,'Register File / SM',HW.registers,'registers') +
+      limitRow(220,'Shared Memory / SM',HW.smem/1024,'KB');
+
+    perBlock.innerHTML =
+      `<rect x="445" y="275" width="450" height="72" rx="8" fill="var(--panel)" stroke="var(--border)"/>
+       <text x="460" y="297" font-size="11">${threads} threads / block</text>
+       <text x="460" y="318" font-size="11">${warpsPerBlock} warps / block</text>
+       <text x="645" y="297" font-size="11">${regs} registers / thread</text>
+       <text x="645" y="318" font-size="11">${regsPerBlock} registers / block</text>
+       <text x="460" y="338" font-size="11">${smemBlock/1024} KB shared memory / block</text>`;
+
+    constraints.innerHTML =
+      constraintRow(390,'Thread 限制',byThreads,byThreads===residentBlocks) +
+      constraintRow(420,'Register 限制',byRegs,byRegs===residentBlocks) +
+      constraintRow(450,'Shared Memory 限制',bySmem,bySmem===residentBlocks) +
+      constraintRow(480,'Block slot 限制',byBlocks,byBlocks===residentBlocks) +
+      constraintRow(510,'Warp slot 限制',byWarps,byWarps===residentBlocks);
+
+    residentFormula.textContent =
+      `resident blocks = min(${vals.map(v => v === Infinity ? '∞' : v).join(', ')}) = ${residentBlocks}`;
+
+    residentWarpsFormula.textContent =
+      `resident warps = ${residentBlocks} blocks × ${warpsPerBlock} warps/block = ${residentWarps}`;
+
+    bottleneck.textContent = `当前瓶颈：${bottlenecks.join(' + ')}`;
+    residentWarpText.textContent = `${residentWarps} resident warps / 最大 ${HW.maxWarps}`;
+    occSvg.textContent = `${residentWarps} / ${HW.maxWarps} = ${Math.round(occ*100)}%`;
+
+    summary.innerHTML = `
+      <div class="summary-top">
+        <div class="summary-result"><span>各资源共同限制后的驻留上限 / SM</span><b>${residentBlocks} resident blocks / ${residentWarps} resident warps</b></div>
+        <div class="summary-occupancy">
+          <div><span>Occupancy：</span><b>${Math.round(occ*100)}%</b></div>
+          <div class="occbar"><div id="occFill" class="occfill"></div></div>
+        </div>
       </div>
-    </main>
-    <aside class="sidebar on">
-      <button class="navbar-toggle"></button>
-<nav class="navbar">
-  
-  <div class="logo">
-    <a href="/"><img src="/images/ayer-side.svg" alt="GOGO"></a>
-  </div>
-  
-  <ul class="nav nav-main">
-    
-    <li class="nav-item">
-      <a class="nav-item-link" href="/">主页</a>
-    </li>
-    
-    <li class="nav-item">
-      <a class="nav-item-link" href="/archives">归档</a>
-    </li>
-    
-    <li class="nav-item">
-      <a class="nav-item-link" href="/categories">分类</a>
-    </li>
-    
-    <li class="nav-item">
-      <a class="nav-item-link" href="/tags">标签</a>
-    </li>
-    
-    <li class="nav-item">
-      <a class="nav-item-link" href="/about/">关于我</a>
-    </li>
-    
-  </ul>
-</nav>
-<nav class="navbar navbar-bottom">
-  <ul class="nav">
-    <li class="nav-item">
-      
-      <a class="nav-item-link nav-item-search"  title="搜索">
-        <i class="ri-search-line"></i>
-      </a>
-      
-      
-      <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
-        <i class="ri-rss-line"></i>
-      </a>
-      
-    </li>
-  </ul>
-</nav>
-<div class="search-form-wrap">
-  <div class="local-search local-search-plugin">
-  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
-  <div id="local-search-result" class="local-search-result"></div>
-</div>
-</div>
-    </aside>
-    <div id="mask"></div>
-
-<!-- #reward -->
-<div id="reward">
-  <span class="close"><i class="ri-close-line"></i></span>
-  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
-  <div class="reward-box">
-    
-    <div class="reward-item">
-      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
-      <span class="reward-type">支付宝</span>
-    </div>
-    
-    
-    <div class="reward-item">
-      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
-      <span class="reward-type">微信</span>
-    </div>
-    
-  </div>
-</div>
-    
-<script src="/js/jquery-3.6.0.min.js"></script>
- 
-<script src="/js/lazyload.min.js"></script>
-
-<!-- Tocbot -->
-
-<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
-<link
-  rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css"
-/>
-<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
-
-<script src="/dist/main.js"></script>
-
-<!-- ImageViewer -->
- <!-- Root element of PhotoSwipe. Must have class pswp. -->
-<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
-
-    <!-- Background of PhotoSwipe. 
-         It's a separate element as animating opacity is faster than rgba(). -->
-    <div class="pswp__bg"></div>
-
-    <!-- Slides wrapper with overflow:hidden. -->
-    <div class="pswp__scroll-wrap">
-
-        <!-- Container that holds slides. 
-            PhotoSwipe keeps only 3 of them in the DOM to save memory.
-            Don't modify these 3 pswp__item elements, data is added later on. -->
-        <div class="pswp__container">
-            <div class="pswp__item"></div>
-            <div class="pswp__item"></div>
-            <div class="pswp__item"></div>
-        </div>
-
-        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
-        <div class="pswp__ui pswp__ui--hidden">
-
-            <div class="pswp__top-bar">
-
-                <!--  Controls are self-explanatory. Order can be changed. -->
-
-                <div class="pswp__counter"></div>
-
-                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
-
-                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
-
-                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
-
-                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
-
-                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
-                <!-- element will get class pswp__preloader--active when preloader is running -->
-                <div class="pswp__preloader">
-                    <div class="pswp__preloader__icn">
-                        <div class="pswp__preloader__cut">
-                            <div class="pswp__preloader__donut"></div>
-                        </div>
-                    </div>
-                </div>
+      <div class="summary-info">
+        <div class="summary-kernel"><b>${threads}</b> threads/block → <b>${warpsPerBlock}</b> warps/block</div>
+        <div class="summary-bottleneck">当前瓶颈：<b>${bottlenecks.join(' + ')}</b></div>
+      </div>
+      <div class="resource-target-note">示例 SM：<b>容量 ÷ 每 Block 占用 = 该资源允许的 Block 数</b>，向下取整；取五项中的最小值，橙色标出瓶颈。</div>
+      <div class="summary-limits">
+        ${[
+          ['Thread',byThreads,HW.maxThreads,threads,'threads'],
+          ['Register',byRegs,HW.registers,regsPerBlock,'registers'],
+          ['Shared Memory',bySmem,HW.smem/1024,smemBlock/1024,'KB'],
+          ['Block slot',byBlocks,HW.maxBlocks,1,'blocks'],
+          ['Warp slot',byWarps,HW.maxWarps,warpsPerBlock,'warps']
+        ].map(([label,value,capacity,perBlock,unit]) => {
+          const used = perBlock * residentBlocks;
+          const fmt = n => n.toLocaleString('en-US');
+          return `
+          <div class="summary-limit${value===residentBlocks ? ' is-bottleneck' : ''}">
+            <span>${label} 限制：</span>
+            <div class="resource-rows">
+              <div class="resource-row"><span>SM 上限</span><span>${fmt(capacity)} ${unit}</span></div>
+              <div class="resource-row"><span>每 Block 占用</span><span>${fmt(perBlock)} ${unit}</span></div>
             </div>
+            <div class="resource-calculation">${perBlock === 0 ? '每 Block 占用为 0，此项不限制 Block 数' : `${fmt(capacity)} ÷ ${fmt(perBlock)} → ${value} blocks`}</div>
+            <div class="resource-block-limit">${perBlock === 0 ? '<b>不限</b> Block 数' : `最多 <b>${value}</b> blocks / SM`}</div>
+            <div class="resource-resident">驻留 ${residentBlocks} Blocks 用量：<strong>${fmt(used)} ${unit}</strong></div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="resource-conclusion">驻留 Blocks = min(${vals.map(v => v === Infinity ? '∞' : v).join(', ')}) = <b>${residentBlocks}</b>；驻留 Warps = ${residentBlocks} × ${warpsPerBlock} = <b>${residentWarps}</b>。资源即使尚有剩余，也可能装不下一个完整 Block。</div>
+    `;
 
-            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
-                <div class="pswp__share-tooltip"></div>
-            </div>
+    document.getElementById('occFill').style.width = `${Math.round(occ*100)}%`;
 
-            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
-            </button>
-
-            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
-            </button>
-
-            <div class="pswp__caption">
-                <div class="pswp__caption__center"></div>
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
-<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
-
-<script>
-    function viewer_init() {
-        let pswpElement = document.querySelectorAll('.pswp')[0];
-        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
-
-        $imgArr.forEach(($em, i) => {
-            $em.onclick = () => {
-                // slider展开状态
-                // todo: 这样不好，后面改成状态
-                if (document.querySelector('.left-col.show')) return
-                let items = []
-                $imgArr.forEach(($em2, i2) => {
-                    let img = $em2.getAttribute('data-idx', i2)
-                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
-                    let title = $em2.getAttribute('alt')
-                    // 获得原图尺寸
-                    const image = new Image()
-                    image.src = src
-                    items.push({
-                        src: src,
-                        w: image.width || $em2.width,
-                        h: image.height || $em2.height,
-                        title: title
-                    })
-                })
-                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
-                    index: parseInt(i)
-                });
-                gallery.init()
-            }
-        })
-    }
-    viewer_init()
-</script> 
-<!-- MathJax -->
-
-<!-- Katex -->
-
-<!-- busuanzi  -->
- 
-<script src="/js/busuanzi-2.3.pure.min.js"></script>
- 
-<!-- ClickLove -->
-
-<!-- ClickBoom1 -->
-
-<!-- ClickBoom2 -->
-
-<!-- CodeCopy -->
- 
-<link rel="stylesheet" href="/css/clipboard.css">
- <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
-<script>
-  function wait(callback, seconds) {
-    var timelag = null;
-    timelag = window.setTimeout(callback, seconds);
   }
-  !function (e, t, a) {
-    var initCopyCode = function(){
-      var copyHtml = '';
-      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
-      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
-      copyHtml += '</button>';
-      $(".highlight .code pre").before(copyHtml);
-      $(".article pre code").before(copyHtml);
-      var clipboard = new ClipboardJS('.btn-copy', {
-        target: function(trigger) {
-          return trigger.nextElementSibling;
-        }
-      });
-      clipboard.on('success', function(e) {
-        let $btn = $(e.trigger);
-        $btn.addClass('copied');
-        let $icon = $($btn.find('i'));
-        $icon.removeClass('ri-file-copy-2-line');
-        $icon.addClass('ri-checkbox-circle-line');
-        let $span = $($btn.find('span'));
-        $span[0].innerText = 'COPIED';
-        
-        wait(function () { // 等待两秒钟后恢复
-          $icon.removeClass('ri-checkbox-circle-line');
-          $icon.addClass('ri-file-copy-2-line');
-          $span[0].innerText = 'COPY';
-        }, 2000);
-      });
-      clipboard.on('error', function(e) {
-        e.clearSelection();
-        let $btn = $(e.trigger);
-        $btn.addClass('copy-failed');
-        let $icon = $($btn.find('i'));
-        $icon.removeClass('ri-file-copy-2-line');
-        $icon.addClass('ri-time-line');
-        let $span = $($btn.find('span'));
-        $span[0].innerText = 'COPY FAILED';
-        
-        wait(function () { // 等待两秒钟后恢复
-          $icon.removeClass('ri-time-line');
-          $icon.addClass('ri-file-copy-2-line');
-          $span[0].innerText = 'COPY';
-        }, 2000);
-      });
-    }
-    initCopyCode();
-  }(window, document);
+
+  tpb.addEventListener('change', update);
+  rpt.addEventListener('change', update);
+  smem.addEventListener('change', update);
+
+  update();
+})();
 </script>
- 
-<!-- CanvasBackground -->
-
-<script>
-  if (window.mermaid) {
-    mermaid.initialize({ theme: "forest" });
-  }
-</script>
-
-
-    
-    
-
-  </div>
 </body>
-
 </html>

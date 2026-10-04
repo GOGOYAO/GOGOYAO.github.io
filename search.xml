@@ -1,54 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?><search><entry><title>CUDA：SM 资源限制、Warp 调度与 Occupancy</title><content> 一个 SM 能驻留多少个 Block，取决于 Threads、Registers、Shared Memory、Block slots 和 Warp slots 的共同限制。交互图把硬件容量、每个 Block 的占用、允许的 Block 数和最终驻留用量放在一起，便于理解瓶颈。 
   
-
-   打开交互示意图   打开 CUDA SM &amp;#x2F; Warp &amp;#x2F; Occupancy 交互图 ↗  
- 可调整每个 Block 的线程数、每个线程的寄存器数，以及每个 Block 的共享内存。图中 SM 参数是一组教学示例，具体 GPU 的硬件上限应按型号确定。 
-   如何理解资源限制  对每项资源，先用  SM 容量 ÷ 每个 Block 占用 ，向下取整，得到该资源允许的完整 Block 数；再取各项的最小值。 
- 默认示例为 256 threads&amp;#x2F;block、64 registers&amp;#x2F;thread、16 KB shared memory&amp;#x2F;block： 
- 
- 
- 
- 资源 
- SM 容量 
- 每个 Block 占用 
- 最多允许 Blocks 
- 
- 
-  
- Threads 
- 2,048 
- 256 
- 8 
- 
- 
- Registers 
- 65,536 
- 16,384 
- 4 
- 
- 
- Shared Memory 
- 64 KB 
- 16 KB 
- 4 
- 
- 
- Block slots 
- 32 
- 1 
- 32 
- 
- 
- Warp slots 
- 64 
- 8 
- 8 
- 
-  
- 最终驻留 Blocks &amp;#x3D; min(8, 4, 4, 32, 8) &amp;#x3D;  4 。 
- 每个 Block 有 8 个 Warps，因此驻留 Warps &amp;#x3D; 4 × 8 &amp;#x3D;  32 ，Occupancy &amp;#x3D; 32 &amp;#x2F; 64 &amp;#x3D;  50% 。 
- 瓶颈不一定表示资源完全用尽；剩余资源也可能不足以容纳一个完整 Block。 
-   驻留与调度  Block 被分配到 SM 后，它包含的 Warps 成为 resident warps，并占用相应资源。Resident 不表示此刻都在执行：Warp Scheduler 从 ready warps 中选择并 issue 指令，交由相应执行单元处理。 
 </content><url>/posts/cuda-sm-warp-occupancy/</url></entry><entry><title>About Me</title><content> 
  A startup programer, Beijing 
  
