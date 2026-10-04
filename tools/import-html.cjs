@@ -15,7 +15,8 @@ function importHTML(file, slug, title, { published = false } = {}) {
     fs.mkdirSync(interactive, { recursive: true });
     fs.copyFileSync(file, target);
     metadata.interactive = filename;
-    text = `${title}的完整 HTML 页面。\n\n<!-- more -->\n\n<a class="interactive-link" href="/${filename}" target="_blank" rel="noopener">打开完整页面 ↗</a>\n`;
+    metadata.display = 'full-html';
+    text = `${title}的完整 HTML 文章。\n\n<!-- more -->\n`;
   }
   return writeArticle(slug, metadata, text, { published, extension: fullDocument ? '.md' : '.html' });
 }

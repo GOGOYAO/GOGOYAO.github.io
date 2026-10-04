@@ -13,6 +13,8 @@ function articles({ drafts = false } = {}) {
       safePath(data.permalink);
       if (!data.permalink.endsWith('/')) throw new Error(`${source}: permalink must end with /`);
       if (!Array.isArray(data.tags) || !Array.isArray(data.categories)) throw new Error(`${source}: categories/tags must be arrays`);
+      if (data.display && data.display !== 'full-html') throw new Error(`${source}: unsupported display mode`);
+      if (data.display === 'full-html' && typeof data.interactive !== 'string') throw new Error(`${source}: full-html needs one interactive document`);
       if (!body.trim()) throw new Error(`${source}: empty article`);
       return { source, body, ...data, draft: folder === '_drafts' };
     })

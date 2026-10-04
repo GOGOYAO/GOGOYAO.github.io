@@ -16,6 +16,7 @@ test('production preserves article routes, raw HTML and deterministic output', (
   run('build'); run('check');
   assert.equal(inventory().length, 4);
   assert(fs.readFileSync(output('cuda-sm-warp-occupancy.html')).equals(fs.readFileSync(path.join(fixture, 'content/interactive/cuda-sm-warp-occupancy.html'))));
+  assert(fs.readFileSync(output('posts/cuda-sm-warp-occupancy/index.html')).equals(fs.readFileSync(path.join(fixture, 'content/interactive/cuda-sm-warp-occupancy.html'))));
   const before = fs.readFileSync(output('atom.xml'));
   run('build'); assert(fs.readFileSync(output('atom.xml')).equals(before));
 });
@@ -25,6 +26,8 @@ test('HTML drafts are previewable and never leak through production, including r
   run('build'); assert.equal(inventory().length, 4); assert(!fs.existsSync(output('qa-full-html.html')));
   run('build', '--drafts'); run('check', '--drafts'); assert.equal(inventory().length, 5);
   assert(fs.readFileSync(output('qa-full-html.html')).equals(fs.readFileSync(file)));
+  assert(fs.readFileSync(output('posts/qa-full-html/index.html')).equals(fs.readFileSync(file)));
+  assert(!fs.readFileSync(output('posts/qa-full-html/index.html'), 'utf8').includes('interactive-link'));
   assert.throws(() => run('check'), /Draft preview cannot be published/);
   run('build'); run('check'); assert(!fs.existsSync(output('qa-full-html.html')));
 });

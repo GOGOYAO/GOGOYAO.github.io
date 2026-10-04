@@ -30,12 +30,19 @@ async function build({ drafts = false } = {}) {
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.copyFileSync(path.join(interactive, file), dest);
     }
+    const fullHTML = posts.filter(post => post.display === 'full-html').map(post => {
+      if (typeof post.interactive !== 'string') throw new Error(`Full HTML article needs one interactive document: ${post.path}`);
+      const articlePath = post.path.replace(/^\/+/, '');
+      const articleFile = safePath(articlePath.endsWith('/') ? articlePath + 'index.html' : articlePath);
+      fs.copyFileSync(path.join(interactive, safePath(post.interactive)), path.join(publicDir, articleFile));
+      return { source: post.interactive, route: articleFile };
+    });
     fs.writeFileSync(path.join(publicDir, '.nojekyll'), '');
     for (const [name, content] of Object.entries(indexes(posts, hexo.config.url + '/', hexo.config.title))) {
       fs.writeFileSync(path.join(publicDir, name), content);
     }
     const routes = files(publicDir);
-    fs.writeFileSync(buildManifest, JSON.stringify({ mode: drafts ? 'drafts' : 'production', routes, interactive: interactiveFiles }, null, 2) + '\n');
+    fs.writeFileSync(buildManifest, JSON.stringify({ mode: drafts ? 'drafts' : 'production', routes, interactive: interactiveFiles, fullHTML }, null, 2) + '\n');
     console.log(`Built ${posts.length} ${drafts ? 'preview' : 'published'} articles.`);
     return { posts, routes };
   } finally { await hexo.exit(); }

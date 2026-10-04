@@ -45,6 +45,9 @@ function check({ production = true } = {}) {
   for (const file of manifest.interactive || []) {
     if (!fs.readFileSync(path.join(interactive, file)).equals(fs.readFileSync(path.join(publicDir, file)))) fail(`Interactive HTML changed: ${file}`);
   }
+  for (const page of manifest.fullHTML || []) {
+    if (!fs.readFileSync(path.join(interactive, page.source)).equals(fs.readFileSync(path.join(publicDir, page.route)))) fail(`Full HTML article changed: ${page.route}`);
+  }
   if (failures.length) throw new Error([...new Set(failures)].join('\n'));
   console.log(`Checks passed: ${index.length} articles; home, archives, taxonomies, search, local links and raw HTML.`);
   return index;

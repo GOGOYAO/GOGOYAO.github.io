@@ -25,12 +25,12 @@ description: 一句话摘要
 `npm run import-html -- 文件路径 slug "标题"` 自动识别完整 HTML 文档或正文片段。
 
 - 正文片段创建 .html 文章，沿用博客主题。
-- 完整文档保存在 content/interactive，原样保留样式和脚本，同时创建有摘要、标题和入口的文章。
+- 完整文档保存在 content/interactive，原样保留样式和脚本，同时创建用于管理摘要、标题和分类的元数据文章；默认 `display: full-html`，文章地址直接展示完整文档，不需要再点击跳转。
 - 默认草稿；传入 --publish 只建立正式文章，仍需检查、提交和发布。
 
 完整 HTML 的文章头部包含 `interactive: slug.html`。生产构建只复制正式、已到发布日期的文章引用的 HTML；撤下文章后，未被其他正式文章引用的 HTML 也会从发布包移除。共享页面可被多篇文章引用。
 
-CUDA 文章地址为 `/posts/cuda-sm-warp-occupancy/`，它引用 `/cuda-sm-warp-occupancy.html`；重构不改变两者。
+CUDA 文章地址 `/posts/cuda-sm-warp-occupancy/` 直接展示交互文档；旧地址 `/cuda-sm-warp-occupancy.html` 继续保留。完整文档使用自己的样式和脚本，首页和文章列表继续使用博客主题。
 
 所有新导入文章都应检查正文、补充摘要/分类/标签并预览。HTML 如引用额外图片或样式，明确放入 assets 中并核对链接；assets 的内容公开，不放私密草稿和凭据。
 
