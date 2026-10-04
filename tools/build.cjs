@@ -80,8 +80,10 @@ async function build({ drafts = false } = {}) {
       if (post.fullHTML) {
         const rendered = posts.find(item => item.article_slug === post.slug);
         const summary = post.summary ? rendered.excerpt : '';
-        fs.writeFileSync(path.join(publicDir, route), articlePage(post.body, post.title, summary));
-        fullPages.push({ source: post.source, route, title: post.title, summary });
+        const neighbor = item => item ? { title: item.title, path: item.path } : null;
+        const navigation = { prev: neighbor(rendered.prev), next: neighbor(rendered.next) };
+        fs.writeFileSync(path.join(publicDir, route), articlePage(post.body, post.title, summary, navigation));
+        fullPages.push({ source: post.source, route, title: post.title, summary, navigation });
       }
       for (const file of post.attachments) writeCopy(post.slug + '/' + file, post.permalink + file);
       for (const alias of post.aliases) {

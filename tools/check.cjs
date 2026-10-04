@@ -47,7 +47,7 @@ function check({ production = true } = {}) {
     if (!fs.readFileSync(path.join(content, page.source)).equals(fs.readFileSync(path.join(publicDir, page.route)))) fail(`Article resource changed: ${page.route}`);
   }
   for (const page of manifest.fullPages || []) {
-    const expected = articlePage(fs.readFileSync(path.join(content, page.source), 'utf8'), page.title, page.summary);
+    const expected = articlePage(fs.readFileSync(path.join(content, page.source), 'utf8'), page.title, page.summary, page.navigation);
     if (fs.readFileSync(path.join(publicDir, page.route), 'utf8') !== expected) fail(`Full HTML article changed: ${page.route}`);
   }
   if (failures.length) throw new Error([...new Set(failures)].join('\n'));
