@@ -56,17 +56,72 @@
       background:var(--panel);
       border-radius:10px;
       padding:14px;
-      line-height:1.8;
+      line-height:1.5;
       font-size:14px;
     }
+    .summary-top{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 150px;
+      gap:12px 24px;
+      align-items:center;
+    }
+    .summary-result{min-width:0}
+    .summary-result > span{display:block;color:var(--muted);font-size:12px;margin-bottom:3px}
+    .summary-result b{font-size:22px;line-height:1.4}
+    .summary-occupancy{min-width:0}
+    .summary-occupancy > div:first-child{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+    .summary-occupancy span{color:var(--muted);font-size:12px}
+    .summary-occupancy b{font-size:26px;color:#087f5b;line-height:1.2}
+    .summary-info{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:baseline;
+      gap:6px 24px;
+      margin:9px 0 12px;
+      font-size:13px;
+    }
+    .summary-kernel{color:var(--muted)}
+    .summary-bottleneck{min-width:0;overflow-wrap:anywhere}
+    .summary-bottleneck b{color:#92400e}
+    .summary-limits{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+    .summary-limit{
+      min-width:0;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:8px 10px;
+    }
+    .summary-limit.is-bottleneck{background:#fffbeb;border-color:#f5c56b}
+    .summary-limit > span{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
+    .summary-limit > div{font-size:12px;white-space:nowrap}
+    .summary-limit b{font-size:18px;margin:0 2px;color:var(--text)}
+    .summary-limit.is-bottleneck b{color:#92400e}
     .occbar{
-      margin-top:12px;
-      height:12px;
-      background:#e5e7eb;
+      margin-top:6px;
+      height:6px;
+      background:#dfe4e9;
       border-radius:999px;
       overflow:hidden;
     }
     .occfill{height:100%;background:var(--series3);width:0;transition:width .2s}
+    @media (max-width:1050px){
+      .summary-limits{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
+    @media (max-width:600px){
+      .summary{padding:12px}
+      .summary-top{grid-template-columns:minmax(0,1fr) 92px;gap:12px}
+      .summary-result b{font-size:16px}
+      .summary-occupancy > div:first-child{display:block}
+      .summary-occupancy span{display:block}
+      .summary-occupancy b{font-size:24px}
+      .summary-info{gap:5px;margin:10px 0}
+      .summary-limits{grid-template-columns:1fr;gap:4px}
+      .summary-limit{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px}
+      .summary-limit > span{font-size:11px;margin-bottom:0;line-height:1.3}
+      .summary-limit > div{font-size:11px;line-height:1.3}
+      .summary-limit b{font-size:16px}
+      .summary-info{font-size:12px}
+    }
     .svgbox{
       overflow-x:auto;
       background:var(--card);
@@ -123,11 +178,10 @@
       </label>
     </div>
     <div id="summary" class="summary"></div>
-    <div class="occbar"><div id="occFill" class="occfill"></div></div>
   </div>
 
   <div class="svgbox">
-    <svg viewBox="0 0 1430 770" role="img" aria-label="CUDA Grid Block SM 资源限制 Warp Scheduler Occupancy 全流程">
+    <svg viewBox="0 0 1430 692" role="img" aria-label="CUDA Grid Block SM 资源限制 Warp Scheduler Occupancy 全流程">
       <defs>
         <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
           <path d="M0,0 L8,4 L0,8 Z" fill="currentColor"></path>
@@ -135,7 +189,7 @@
       </defs>
 
       <text x="25" y="28" font-size="16" font-weight="700">② Grid / Block</text>
-      <rect x="20" y="42" width="270" height="690" rx="14" fill="var(--card)" stroke="var(--border)"/>
+      <rect x="20" y="42" width="270" height="630" rx="14" fill="var(--card)" stroke="var(--border)"/>
       <text x="40" y="72" font-size="14" font-weight="700">Grid</text>
       <text x="40" y="92" font-size="11" fill="var(--muted)">一次 kernel launch 的全部 blocks</text>
       <g id="grid"></g>
@@ -146,7 +200,7 @@
       <text x="357" text-anchor="middle" y="318" font-size="11" fill="var(--muted)">调度 block</text>
 
       <text x="435" y="28" font-size="16" font-weight="700">③ 一个 SM：资源容量决定能放多少 Block</text>
-      <rect x="425" y="42" width="510" height="690" rx="14" fill="var(--card)" stroke="var(--border)"/>
+      <rect x="425" y="42" width="510" height="630" rx="14" fill="var(--card)" stroke="var(--border)"/>
 
       <text x="445" y="72" font-size="14" font-weight="700">示例 SM 的硬件上限</text>
       <g id="limits"></g>
@@ -167,7 +221,7 @@
       <text x="1015" text-anchor="middle" y="318" font-size="11" fill="var(--muted)">形成 resident warps</text>
 
       <text x="1110" y="28" font-size="16" font-weight="700">④ Warp Scheduler</text>
-      <rect x="1100" y="42" width="310" height="690" rx="14" fill="var(--card)" stroke="var(--border)"/>
+      <rect x="1100" y="42" width="310" height="630" rx="14" fill="var(--card)" stroke="var(--border)"/>
 
       <rect x="1120" y="85" width="270" height="125" rx="10" fill="var(--panel)" stroke="var(--border)"/>
       <text x="1135" y="110" font-size="13" font-weight="700">Resident Warps</text>
@@ -237,7 +291,6 @@
   const residentWarpText = document.getElementById('residentWarpText');
   const occSvg = document.getElementById('occSvg');
   const summary = document.getElementById('summary');
-  const occFill = document.getElementById('occFill');
 
   function renderGrid(threads){
     const warps = threads / 32;
@@ -326,18 +379,27 @@
     occSvg.textContent = `${residentWarps} / ${HW.maxWarps} = ${Math.round(occ*100)}%`;
 
     summary.innerHTML = `
-      <div><b>${threads}</b> threads/block → <b>${warpsPerBlock}</b> warps/block</div>
-      <div>Thread 限制：最多 <b>${byThreads}</b> blocks / SM</div>
-      <div>Register 限制：最多 <b>${byRegs}</b> blocks / SM</div>
-      <div>Shared Memory 限制：最多 <b>${bySmem}</b> blocks / SM</div>
-      <div>Block slot 限制：最多 <b>${byBlocks}</b> blocks / SM</div>
-      <div>Warp slot 限制：最多 <b>${byWarps}</b> blocks / SM</div>
-      <div style="margin-top:6px">最终：<b>${residentBlocks} resident blocks / ${residentWarps} resident warps</b></div>
-      <div>当前瓶颈：<b>${bottlenecks.join(' + ')}</b></div>
-      <div>Occupancy：<b>${Math.round(occ*100)}%</b></div>
+      <div class="summary-top">
+        <div class="summary-result"><span>最终：</span><b>${residentBlocks} resident blocks / ${residentWarps} resident warps</b></div>
+        <div class="summary-occupancy">
+          <div><span>Occupancy：</span><b>${Math.round(occ*100)}%</b></div>
+          <div class="occbar"><div id="occFill" class="occfill"></div></div>
+        </div>
+      </div>
+      <div class="summary-info">
+        <div class="summary-kernel"><b>${threads}</b> threads/block → <b>${warpsPerBlock}</b> warps/block</div>
+        <div class="summary-bottleneck">当前瓶颈：<b>${bottlenecks.join(' + ')}</b></div>
+      </div>
+      <div class="summary-limits">
+        ${[['Thread',byThreads],['Register',byRegs],['Shared Memory',bySmem],['Block slot',byBlocks],['Warp slot',byWarps]].map(([label,value]) => `
+          <div class="summary-limit${value===residentBlocks ? ' is-bottleneck' : ''}">
+            <span>${label} 限制：</span><div>最多 <b>${value}</b> blocks / SM</div>
+          </div>`).join('')}
+      </div>
     `;
 
-    occFill.style.width = `${Math.round(occ*100)}%`;
+    document.getElementById('occFill').style.width = `${Math.round(occ*100)}%`;
+
   }
 
   tpb.addEventListener('change', update);
