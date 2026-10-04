@@ -25,7 +25,7 @@
       background:var(--bg);
       color:var(--text);
     }
-    .wrap{max-width:1320px;margin:0 auto;padding:24px}
+    .wrap{max-width:1520px;margin:0 auto;padding:24px}
     h1{font-size:28px;margin:0 0 8px}
     .sub{color:var(--muted);margin-bottom:20px}
     .card{
@@ -73,8 +73,9 @@
       border:1px solid var(--border);
       border-radius:14px;
       padding:12px;
+      margin-bottom:18px;
     }
-    svg{min-width:1040px;width:100%;height:auto}
+    svg{min-width:1400px;width:100%;height:auto}
     .note{
       line-height:1.8;
       color:var(--muted);
@@ -126,7 +127,7 @@
   </div>
 
   <div class="svgbox">
-    <svg viewBox="0 0 1240 690" role="img" aria-label="CUDA Grid Block SM 资源限制 Warp Scheduler Occupancy 全流程">
+    <svg viewBox="0 0 1430 770" role="img" aria-label="CUDA Grid Block SM 资源限制 Warp Scheduler Occupancy 全流程">
       <defs>
         <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
           <path d="M0,0 L8,4 L0,8 Z" fill="currentColor"></path>
@@ -134,70 +135,70 @@
       </defs>
 
       <text x="25" y="28" font-size="16" font-weight="700">② Grid / Block</text>
-      <rect x="20" y="42" width="270" height="610" rx="14" fill="var(--card)" stroke="var(--border)"/>
+      <rect x="20" y="42" width="270" height="690" rx="14" fill="var(--card)" stroke="var(--border)"/>
       <text x="40" y="72" font-size="14" font-weight="700">Grid</text>
       <text x="40" y="92" font-size="11" fill="var(--muted)">一次 kernel launch 的全部 blocks</text>
       <g id="grid"></g>
       <text x="40" y="605" font-size="12" fill="var(--muted)">Block 是被分配到 SM 的单位</text>
       <text x="40" y="625" font-size="12" fill="var(--muted)">一个 Block 不跨 SM</text>
 
-      <line x1="295" y1="335" x2="345" y2="335" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
-      <text x="298" y="318" font-size="11" fill="var(--muted)">调度 block</text>
+      <line x1="295" y1="335" x2="425" y2="335" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="357" text-anchor="middle" y="318" font-size="11" fill="var(--muted)">调度 block</text>
 
-      <text x="355" y="28" font-size="16" font-weight="700">③ 一个 SM：资源容量决定能放多少 Block</text>
-      <rect x="345" y="42" width="510" height="610" rx="14" fill="var(--card)" stroke="var(--border)"/>
+      <text x="435" y="28" font-size="16" font-weight="700">③ 一个 SM：资源容量决定能放多少 Block</text>
+      <rect x="425" y="42" width="510" height="690" rx="14" fill="var(--card)" stroke="var(--border)"/>
 
-      <text x="365" y="72" font-size="14" font-weight="700">示例 SM 的硬件上限</text>
+      <text x="445" y="72" font-size="14" font-weight="700">示例 SM 的硬件上限</text>
       <g id="limits"></g>
 
-      <text x="365" y="258" font-size="14" font-weight="700">当前 Kernel 每个 Block 的资源需求</text>
+      <text x="445" y="258" font-size="14" font-weight="700">当前 Kernel 每个 Block 的资源需求</text>
       <g id="perBlock"></g>
 
-      <text x="365" y="372" font-size="14" font-weight="700">每项资源分别最多支持多少 Blocks</text>
+      <text x="445" y="372" font-size="14" font-weight="700">每项资源分别最多支持多少 Blocks</text>
       <g id="constraints"></g>
 
-      <rect x="365" y="520" width="470" height="105" rx="10" fill="var(--panel)" stroke="var(--border)"/>
-      <text x="385" y="545" font-size="13" font-weight="700">最终 Resident Blocks</text>
-      <text id="residentFormula" x="385" y="570" font-size="12"></text>
-      <text id="residentWarpsFormula" x="385" y="594" font-size="12"></text>
-      <text id="bottleneck" x="385" y="615" font-size="12" font-weight="700"></text>
+      <rect x="445" y="552" width="470" height="105" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="465" y="577" font-size="13" font-weight="700">最终 Resident Blocks</text>
+      <text id="residentFormula" x="465" y="602" font-size="12"></text>
+      <text id="residentWarpsFormula" x="465" y="626" font-size="12"></text>
+      <text id="bottleneck" x="465" y="650" font-size="12" font-weight="700"></text>
 
-      <line x1="860" y1="335" x2="910" y2="335" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
-      <text x="865" y="318" font-size="11" fill="var(--muted)">形成 resident warps</text>
+      <line x1="940" y1="335" x2="1100" y2="335" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="1015" text-anchor="middle" y="318" font-size="11" fill="var(--muted)">形成 resident warps</text>
 
-      <text x="920" y="28" font-size="16" font-weight="700">④ Warp Scheduler</text>
-      <rect x="910" y="42" width="310" height="610" rx="14" fill="var(--card)" stroke="var(--border)"/>
+      <text x="1110" y="28" font-size="16" font-weight="700">④ Warp Scheduler</text>
+      <rect x="1100" y="42" width="310" height="690" rx="14" fill="var(--card)" stroke="var(--border)"/>
 
-      <rect x="930" y="85" width="270" height="105" rx="10" fill="var(--panel)" stroke="var(--border)"/>
-      <text x="945" y="110" font-size="13" font-weight="700">Resident Warps</text>
-      <text id="residentWarpText" x="945" y="133" font-size="12"></text>
-      <text x="945" y="155" font-size="11" fill="var(--muted)">都已占用寄存器 / 所属 block 的 shared memory / warp slot</text>
-      <text x="945" y="174" font-size="11" fill="var(--muted)">但不代表此刻都在执行</text>
+      <rect x="1120" y="85" width="270" height="125" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="1135" y="110" font-size="13" font-weight="700">Resident Warps</text>
+      <text id="residentWarpText" x="1135" y="133" font-size="12"></text>
+      <text x="1135" y="155" font-size="11" fill="var(--muted)"><tspan x="1135">都已占用寄存器 / 所属 block 的 </tspan><tspan x="1135" dy="17">shared memory / warp slot</tspan></text>
+      <text x="1135" y="194" font-size="11" fill="var(--muted)">但不代表此刻都在执行</text>
 
-      <line x1="1065" y1="195" x2="1065" y2="230" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+      <line x1="1255" y1="215" x2="1255" y2="230" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
 
-      <rect x="930" y="240" width="270" height="100" rx="10" fill="var(--panel)" stroke="var(--border)"/>
-      <text x="945" y="265" font-size="13" font-weight="700">运行时状态</text>
-      <rect x="950" y="285" width="95" height="32" rx="6" fill="var(--series3)" opacity="0.75"/>
-      <text x="997" y="305" text-anchor="middle" font-size="11">Ready</text>
-      <rect x="1070" y="285" width="95" height="32" rx="6" fill="var(--series5)" opacity="0.75"/>
-      <text x="1117" y="305" text-anchor="middle" font-size="11">Stalled</text>
+      <rect x="1120" y="240" width="270" height="100" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="1135" y="265" font-size="13" font-weight="700">运行时状态</text>
+      <rect x="1140" y="285" width="95" height="32" rx="6" fill="var(--series3)" opacity="0.75"/>
+      <text x="1187" y="305" text-anchor="middle" font-size="11">Ready</text>
+      <rect x="1260" y="285" width="95" height="32" rx="6" fill="var(--series5)" opacity="0.75"/>
+      <text x="1307" y="305" text-anchor="middle" font-size="11">Stalled</text>
 
-      <line x1="1065" y1="345" x2="1065" y2="380" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+      <line x1="1255" y1="345" x2="1255" y2="380" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
 
-      <rect x="950" y="390" width="230" height="75" rx="10" fill="var(--panel)" stroke="var(--border)"/>
-      <text x="1065" y="417" text-anchor="middle" font-size="13" font-weight="700">Warp Scheduler</text>
-      <text x="1065" y="440" text-anchor="middle" font-size="11" fill="var(--muted)">从 ready warps 中挑选并 issue</text>
+      <rect x="1140" y="390" width="230" height="75" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="1255" y="417" text-anchor="middle" font-size="13" font-weight="700">Warp Scheduler</text>
+      <text x="1255" y="440" text-anchor="middle" font-size="11" fill="var(--muted)">从 ready warps 中挑选并 issue</text>
 
-      <line x1="1065" y1="470" x2="1065" y2="505" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+      <line x1="1255" y1="470" x2="1255" y2="505" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
 
-      <rect x="940" y="515" width="250" height="85" rx="10" fill="var(--panel)" stroke="var(--border)"/>
-      <text x="1065" y="542" text-anchor="middle" font-size="13" font-weight="700">执行单元</text>
-      <text x="1065" y="565" text-anchor="middle" font-size="11" fill="var(--muted)">CUDA Core / Tensor Core</text>
-      <text x="1065" y="584" text-anchor="middle" font-size="11" fill="var(--muted)">Load/Store Unit / SFU</text>
+      <rect x="1130" y="515" width="250" height="85" rx="10" fill="var(--panel)" stroke="var(--border)"/>
+      <text x="1255" y="542" text-anchor="middle" font-size="13" font-weight="700">执行单元</text>
+      <text x="1255" y="565" text-anchor="middle" font-size="11" fill="var(--muted)">CUDA Core / Tensor Core</text>
+      <text x="1255" y="584" text-anchor="middle" font-size="11" fill="var(--muted)">Load/Store Unit / SFU</text>
 
-      <text x="945" y="625" font-size="12" font-weight="700">Occupancy</text>
-      <text id="occSvg" x="945" y="645" font-size="12"></text>
+      <text x="1135" y="625" font-size="12" font-weight="700">Occupancy</text>
+      <text id="occSvg" x="1135" y="645" font-size="12"></text>
     </svg>
   </div>
 
@@ -253,17 +254,17 @@
   }
 
   function limitRow(y,label,value,unit){
-    return `<rect x="365" y="${y}" width="220" height="26" rx="6" fill="var(--panel)"/>
-            <text x="375" y="${y+18}" font-size="11">${label}</text>
-            <text x="575" y="${y+18}" text-anchor="end" font-size="11" font-weight="700">${value} ${unit}</text>`;
+    return `<rect x="445" y="${y}" width="450" height="26" rx="6" fill="var(--panel)"/>
+            <text x="455" y="${y+18}" font-size="11">${label}</text>
+            <text x="880" y="${y+18}" text-anchor="end" font-size="11" font-weight="700">${value} ${unit}</text>`;
   }
 
   function constraintRow(y,label,maxBlocks,isBottle){
     const fill = isBottle ? 'var(--series5)' : 'var(--panel)';
     const opacity = isBottle ? '0.72' : '1';
-    return `<rect x="365" y="${y}" width="450" height="25" rx="6" fill="${fill}" opacity="${opacity}" stroke="var(--border)"/>
-            <text x="377" y="${y+17}" font-size="11">${label}</text>
-            <text x="800" y="${y+17}" text-anchor="end" font-size="11" font-weight="700">
+    return `<rect x="445" y="${y}" width="450" height="25" rx="6" fill="${fill}" opacity="${opacity}" stroke="var(--border)"/>
+            <text x="457" y="${y+17}" font-size="11">${label}</text>
+            <text x="880" y="${y+17}" text-anchor="end" font-size="11" font-weight="700">
               最多 ${maxBlocks} blocks / SM${isBottle ? '  ← 瓶颈' : ''}
             </text>`;
   }
@@ -300,12 +301,12 @@
       limitRow(220,'Shared Memory / SM',HW.smem/1024,'KB');
 
     perBlock.innerHTML =
-      `<rect x="365" y="275" width="450" height="72" rx="8" fill="var(--panel)" stroke="var(--border)"/>
-       <text x="380" y="297" font-size="11">${threads} threads / block</text>
-       <text x="380" y="318" font-size="11">${warpsPerBlock} warps / block</text>
-       <text x="565" y="297" font-size="11">${regs} registers / thread</text>
-       <text x="565" y="318" font-size="11">${regsPerBlock} registers / block</text>
-       <text x="380" y="338" font-size="11">${smemBlock/1024} KB shared memory / block</text>`;
+      `<rect x="445" y="275" width="450" height="72" rx="8" fill="var(--panel)" stroke="var(--border)"/>
+       <text x="460" y="297" font-size="11">${threads} threads / block</text>
+       <text x="460" y="318" font-size="11">${warpsPerBlock} warps / block</text>
+       <text x="645" y="297" font-size="11">${regs} registers / thread</text>
+       <text x="645" y="318" font-size="11">${regsPerBlock} registers / block</text>
+       <text x="460" y="338" font-size="11">${smemBlock/1024} KB shared memory / block</text>`;
 
     constraints.innerHTML =
       constraintRow(390,'Thread 限制',byThreads,byThreads===residentBlocks) +
