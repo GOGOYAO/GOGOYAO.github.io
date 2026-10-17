@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), os = require('node:os'), cp = require('node:child_process');
 const source = path.resolve(__dirname, '..');
+const initialPublishedCount = require('../tools/lib/articles.cjs').articles().length;
 const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'gogo-content-test-'));
 for (const name of ['tools', 'content', 'pages', 'themes', 'assets', '_config.yml', 'package.json']) fs.cpSync(path.join(source, name), path.join(fixture, name), { recursive: true });
 fs.symlinkSync(path.join(source, 'node_modules'), path.join(fixture, 'node_modules'), 'dir');
@@ -12,7 +13,7 @@ const meta = slug => path.join(fixture, 'content', slug, 'meta.md');
 const status = (slug, value) => fs.writeFileSync(meta(slug), fs.readFileSync(meta(slug), 'utf8').replace(/status: \w+/, 'status: ' + value));
 test.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
 test('existing URLs and complete CUDA document remain intact', () => {
-  run('build'); run('check'); assert.equal(inventory().length, 4);
+  run('build'); run('check'); assert.equal(inventory().length, initialPublishedCount);
   const original = fs.readFileSync(path.join(fixture, 'content/cuda-sm-warp-occupancy/content.html'));
   for (const route of ['posts/cuda-sm-warp-occupancy/index.html', 'cuda-sm-warp-occupancy.html']) { const page = fs.readFileSync(output(route), 'utf8'); assert(page.includes('data-blog-summary')); assert(page.includes('交互图把硬件容量')); assert(page.includes(original.toString().match(/<script>[\s\S]*?<\/script>/)[0])); }
   assert(inventory().some(post => post.path === '2021/07/31/博客搭建方法/'));
@@ -41,8 +42,8 @@ test('HTML drafts and attachments preview, publish and withdraw solely through s
   assert(fs.readFileSync(output('posts/qa-html/index.html'), 'utf8').includes('data-blog-header'));
   assert(fs.existsSync(output('posts/qa-html/app.js')));
   assert.throws(() => run('check'), /Draft preview cannot be published/);
-  status('qa-html', 'published'); run('build'); run('check'); assert.equal(inventory().length, 5);
-  status('qa-html', 'draft'); run('build'); run('check'); assert.equal(inventory().length, 4); assert(!fs.existsSync(output('posts/qa-html')));
+  status('qa-html', 'published'); run('build'); run('check'); assert.equal(inventory().length, initialPublishedCount + 1);
+  status('qa-html', 'draft'); run('build'); run('check'); assert.equal(inventory().length, initialPublishedCount); assert(!fs.existsSync(output('posts/qa-html')));
 });
 test('invalid or ambiguous folders and duplicate routes fail before replacing the last good site', () => {
   const dir = path.join(fixture, 'content/invalid'); fs.mkdirSync(dir);
